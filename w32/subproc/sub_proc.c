@@ -58,126 +58,6 @@ static sub_process *proc_array[MAXIMUM_WAIT_OBJECTS];
 static int proc_index = 0;
 static int fake_exits_pending = 0;
 
-/* Windows jobserver implementation variables */
-static char jobserver_semaphore_name[MAX_PATH + 1];
-static HANDLE jobserver_semaphore = NULL;
-
-/* Open existing jobserver semaphore */
-int open_jobserver_semaphore(const char* name)
-{
-    jobserver_semaphore = OpenSemaphore(
-        SEMAPHORE_ALL_ACCESS,	// Semaphore access setting
-        FALSE,			// Child processes DON'T inherit
-        name);			// Semaphore name
-
-    if (jobserver_semaphore == NULL)
-        return 0;
-
-    return 1;        
-}
-
-/* Create new jobserver semaphore */
-int create_jobserver_semaphore(int tokens)
-{
-    sprintf(jobserver_semaphore_name, "gmake_semaphore_%d", _getpid());
-
-    jobserver_semaphore = CreateSemaphore(
-        NULL, 				// Use default security descriptor
-        tokens,				// Initial count
-        tokens, 			// Maximum count
-        jobserver_semaphore_name);	// Semaphore name
-
-    if (jobserver_semaphore == NULL)
-        return 0;
-
-    return 1;        
-}
-
-/* Close jobserver semaphore */
-void free_jobserver_semaphore()
-{
-    if (jobserver_semaphore != NULL)
-    {
-        CloseHandle(jobserver_semaphore);
-        jobserver_semaphore = NULL;
-    }
-}
-
-/* Decrement semaphore count */
-int acquire_jobserver_semaphore()
-{
-    DWORD dwEvent = WaitForSingleObject(
-        jobserver_semaphore,	// Handle to semaphore
-        0);			// DON'T wait on semaphore
-
-    return (dwEvent == WAIT_OBJECT_0);
-}
-
-/* Increment semaphore count */
-int release_jobserver_semaphore()
-{
-    BOOL bResult = ReleaseSemaphore( 
-        jobserver_semaphore,  	// handle to semaphore
-        1,            		// increase count by one
-        NULL);        		// not interested in previous count
-
-    return (bResult);
-}
-
-int has_jobserver_semaphore()
-{
-    return (jobserver_semaphore != NULL);
-}
-
-char* get_jobserver_semaphore_name()
-{
-    return (jobserver_semaphore_name);
-}
-
-/* Wait for either the jobserver semaphore to become signalled or one of our
- * child processes to terminate.
- */
-int wait_for_semaphore_or_child_process()
-{
-    HANDLE handles[MAXIMUM_WAIT_OBJECTS];
-    DWORD dwHandleCount = 1;
-    DWORD dwEvent;
-    int i;
-
-    /* Add jobserver semaphore to first slot. */
-    handles[0] = jobserver_semaphore;
-
-    /* Build array of handles to wait for */
-    for (i = 0; i < proc_index; i++) 
-    {
-        /* Don't wait on child processes that have already finished */
-        if (fake_exits_pending && proc_array[i]->exit_code)
-            continue;
-
-        handles[dwHandleCount++] = (HANDLE) proc_array[i]->pid;
-    }
-
-    dwEvent = WaitForMultipleObjects( 
-        dwHandleCount,	// number of objects in array
-        handles,	// array of objects
-        FALSE,		// wait for any object
-        INFINITE);	// wait until object is signalled
-
-    switch(dwEvent)
-    {
-      case WAIT_FAILED:
-        return -1;
-
-      case WAIT_OBJECT_0:
-        /* Indicate that the semaphore was signalled */
-        return 1;
-
-      default:
-        /* Assume that one or more of the child processes terminated. */
-        return 0;
-    }
-}
-
 /*
  * When a process has been waited for, adjust the wait state
  * array so that we don't wait for it again
@@ -207,7 +87,7 @@ process_adjust_wait_state(sub_process* pproc)
  * Waits for any of the registered child processes to finish.
  */
 static sub_process *
-process_wait_for_any_private(int block, DWORD* pdwWaitStatus)
+process_wait_for_any_private(void)
 {
 	HANDLE handles[MAXIMUM_WAIT_OBJECTS];
 	DWORD retval, which;
@@ -226,7 +106,7 @@ process_wait_for_any_private(int block, DWORD* pdwWaitStatus)
 
 	/* wait for someone to exit */
 	if (!fake_exits_pending) {
-		retval = WaitForMultipleObjects(proc_index, handles, FALSE, (block ? INFINITE : 0));
+		retval = WaitForMultipleObjects(proc_index, handles, FALSE, INFINITE);
 		which = retval - WAIT_OBJECT_0;
 	} else {
 		fake_exits_pending--;
@@ -234,19 +114,13 @@ process_wait_for_any_private(int block, DWORD* pdwWaitStatus)
 		which = i;
 	}
 
-        /* If the pointer is not NULL, set the wait status result variable. */
-        if (pdwWaitStatus)
-            *pdwWaitStatus = retval;
-
 	/* return pointer to process */
-        if ((retval == WAIT_TIMEOUT) || (retval == WAIT_FAILED)) {
-		return NULL;
-        }
-	else {
+	if (retval != WAIT_FAILED) {
 		sub_process* pproc = proc_array[which];
 		process_adjust_wait_state(pproc);
 		return pproc;
-	} 
+	} else
+		return NULL;
 }
 
 /*
@@ -305,9 +179,9 @@ process_used_slots(void)
  */
 
 HANDLE
-process_wait_for_any(int block, DWORD* pdwWaitStatus)
+process_wait_for_any(void)
 {
-	sub_process* pproc = process_wait_for_any_private(block, pdwWaitStatus);
+	sub_process* pproc = process_wait_for_any_private();
 
 	if (!pproc)
 		return NULL;
@@ -991,7 +865,7 @@ process_file_io(
         DWORD ierr;
 
 	if (proc == NULL)
-		pproc = process_wait_for_any_private(1, 0);
+		pproc = process_wait_for_any_private();
 	else
 		pproc = (sub_process *)proc;
 

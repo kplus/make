@@ -118,6 +118,9 @@ collapse_continuations (char *line)
       if (backslash)
 	{
 	  in = next_token (in);
+          /* Removing this loop will fix Savannah bug #16670: do we want to? */
+	  while (out > line && isblank ((unsigned char)out[-1]))
+	    --out;
 	  *out++ = ' ';
 	}
       else
@@ -171,7 +174,7 @@ concat (num, va_alist)
 {
   static unsigned int rlen = 0;
   static char *result = NULL;
-  unsigned int ri = 0;
+  int ri = 0;
 
 #if USE_VARIADIC
   va_list args;

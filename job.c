@@ -108,7 +108,6 @@ static void vmsWaitForChildren (int *);
 # include "sub_proc.h"
 # include "w32err.h"
 # include "pathstuff.h"
-# define WAIT_NOHANG 1
 #endif /* WINDOWS32 */
 
 #ifdef __EMX__
@@ -438,46 +437,27 @@ is_bourne_compatible_shell (const char *path)
    Append "(ignored)" if IGNORED is nonzero.  */
 
 static void
-child_error (const struct file *file,
+child_error (const char *target_name,
              int exit_code, int exit_sig, int coredump, int ignored)
 {
-  const char *nm;
-  const char *pre = "*** ";
-  const char *post = "";
-  const char *dump = "";
-  struct floc *flocp = &file->cmds->fileinfo;
-
   if (ignored && silent_flag)
     return;
 
-  if (exit_sig && coredump)
-    dump = _(" (core dumped)");
-
-  if (ignored)
-    {
-      pre = "";
-      post = _(" (ignored)");
-    }
-
-  if (! flocp->filenm)
-    nm = _("<builtin>");
-  else
-    {
-      char *a = alloca (strlen (flocp->filenm) + 1 + 11 + 1);
-      sprintf (a, "%s:%lu", flocp->filenm, flocp->lineno);
-      nm = a;
-    }
-  message (0, _("%s: recipe for target `%s' failed"), nm, file->name);
-
 #ifdef VMS
   if (!(exit_code & 1))
-    error (NILF, _("%s[%s] Error 0x%x%s"), pre, file->name, exit_code, post);
+      error (NILF,
+             (ignored ? _("*** [%s] Error 0x%x (ignored)")
+              : _("*** [%s] Error 0x%x")),
+             target_name, exit_code);
 #else
   if (exit_sig == 0)
-    error (NILF, _("%s[%s] Error %d%s"), pre, file->name, exit_code, post);
+    error (NILF, ignored ? _("[%s] Error %d (ignored)") :
+	   _("*** [%s] Error %d"),
+	   target_name, exit_code);
   else
-    error (NILF, _("%s[%s] %s%s%s"),
-           pre, file->name, strsignal (exit_sig), dump, post);
+    error (NILF, "*** [%s] %s%s",
+	   target_name, strsignal (exit_sig),
+	   coredump ? _(" (core dumped)") : "");
 #endif /* VMS */
 }
 
@@ -529,9 +509,9 @@ reap_children (int block, int err)
 {
 #ifndef WINDOWS32
   WAIT_T status;
-#endif
   /* Initially, assume we have some.  */
   int reap_more = 1;
+#endif
 
 #ifdef WAIT_NOHANG
 # define REAP_MORE reap_more
@@ -553,7 +533,7 @@ reap_children (int block, int err)
       int remote = 0;
       pid_t pid;
       int exit_code, exit_sig, coredump;
-      struct child *lastc, *c;
+      register struct child *lastc, *c;
       int child_failed;
       int any_remote, any_local;
       int dontcare;
@@ -700,7 +680,6 @@ reap_children (int block, int err)
             HANDLE hPID;
             int werr;
             HANDLE hcTID, hcPID;
-            DWORD dwWaitStatus = 0;
             exit_code = 0;
             exit_sig = 0;
             coredump = 0;
@@ -724,7 +703,7 @@ reap_children (int block, int err)
               }
 
             /* wait for anything to finish */
-            hPID = process_wait_for_any(block, &dwWaitStatus);
+            hPID = process_wait_for_any();
             if (hPID)
               {
 
@@ -746,18 +725,6 @@ reap_children (int block, int err)
 
                 coredump = 0;
               }
-            else if (dwWaitStatus == WAIT_FAILED)
-              {
-                /* The WaitForMultipleObjects() failed miserably.  Punt.  */
-                pfatal_with_name ("WaitForMultipleObjects");
-              }
-            else if (dwWaitStatus == WAIT_TIMEOUT)
-              {
-                /* No child processes are finished.  Give up waiting. */
-                reap_more = 0;
-                break;
-              }
-
             pid = (pid_t) hPID;
           }
 #endif /* WINDOWS32 */
@@ -817,7 +784,7 @@ reap_children (int block, int err)
           static int delete_on_error = -1;
 
           if (!dontcare)
-            child_error (c->file, exit_code, exit_sig, coredump, 0);
+            child_error (c->file->name, exit_code, exit_sig, coredump, 0);
 
           c->file->update_status = 2;
           if (delete_on_error == -1)
@@ -833,7 +800,8 @@ reap_children (int block, int err)
           if (child_failed)
             {
               /* The commands failed, but we don't care.  */
-              child_error (c->file, exit_code, exit_sig, coredump, 1);
+              child_error (c->file->name,
+                           exit_code, exit_sig, coredump, 1);
               child_failed = 0;
             }
 
@@ -940,19 +908,6 @@ free_child (struct child *child)
   /* If we're using the jobserver and this child is not the only outstanding
      job, put a token back into the pipe for it.  */
 
-#ifdef WINDOWS32
-  if (has_jobserver_semaphore() && jobserver_tokens > 1)
-    {
-      if (! release_jobserver_semaphore())
-        {
-          DWORD err = GetLastError();
-          fatal (NILF, _("release jobserver semaphore: (Error %ld: %s)"),
-                 err, map_windows32_error_to_string(err));
-        }
-
-      DB (DB_JOBS, (_("Released token for child %p (%s).\n"), child, child->file->name));
-    }
-#else
   if (job_fds[1] >= 0 && jobserver_tokens > 1)
     {
       char token = '+';
@@ -967,7 +922,6 @@ free_child (struct child *child)
       DB (DB_JOBS, (_("Released token for child %p (%s).\n"),
                     child, child->file->name));
     }
-#endif
 
   --jobserver_tokens;
 
@@ -1019,7 +973,7 @@ unblock_sigs (void)
 }
 #endif
 
-#if defined(MAKE_JOBSERVER) && !defined(WINDOWS32)
+#ifdef MAKE_JOBSERVER
 RETSIGTYPE
 job_noop (int sig UNUSED)
 {
@@ -1116,23 +1070,8 @@ start_job_command (struct child *child)
   child->file->cmds->lines_flags[child->command_line - 1]
     |= flags & COMMANDS_RECURSE;
 
-  /* POSIX requires that a recipe prefix after a backslash-newline should
-     be ignored.  Remove it now so the output is correct.  */
-  {
-    char prefix = child->file->cmds->recipe_prefix;
-    char *p1, *p2;
-    p1 = p2 = p;
-    while (*p1 != '\0')
-      {
-        *(p2++) = *p1;
-        if (p1[0] == '\n' && p1[1] == prefix)
-          ++p1;
-        ++p1;
-      }
-    *p2 = *p1;
-  }
-
   /* Figure out an argument list from this command line.  */
+
   {
     char *end = 0;
 #ifdef VMS
@@ -1140,7 +1079,7 @@ start_job_command (struct child *child)
 #else
     argv = construct_command_argv (p, &end, child->file,
 				   child->file->cmds->lines_flags[child->command_line - 1],
-                                   &child->sh_batch_file);
+				   &child->sh_batch_file);
 #endif
     if (end == NULL)
       child->command_ptr = NULL;
@@ -1204,8 +1143,7 @@ start_job_command (struct child *child)
      can log the working directory before the command's own error messages
      appear.  */
 
-  message (0, (just_print_flag || trace_flag
-               || (!(flags & COMMANDS_SILENT) && !silent_flag))
+  message (0, (just_print_flag || (!(flags & COMMANDS_SILENT) && !silent_flag))
 	   ? "%s" : (char *) 0, p);
 
   /* Tell update_goal_chain that a command has been started on behalf of
@@ -1768,18 +1706,12 @@ new_job (struct file *file)
      just once).  Also more thought needs to go into the entire algorithm;
      this is where the old parallel job code waits, so...  */
 
-#ifdef WINDOWS32
-  else if (has_jobserver_semaphore())
-#else
   else if (job_fds[0] >= 0)
-#endif
     while (1)
       {
-	int got_token;
-#ifndef WINDOWS32
         char token;
+	int got_token;
 	int saved_errno;
-#endif
 
         DB (DB_JOBS, ("Need a job token; we %shave children\n",
                       children ? "" : "don't "));
@@ -1788,7 +1720,6 @@ new_job (struct file *file)
         if (!jobserver_tokens)
           break;
 
-#ifndef WINDOWS32
         /* Read a token.  As long as there's no token available we'll block.
            We enable interruptible system calls before the read(2) so that if
            we get a SIGCHLD while we're waiting, we'll return with EINTR and
@@ -1817,7 +1748,6 @@ new_job (struct file *file)
             DB (DB_JOBS, ("Duplicate the job FD\n"));
             job_rfd = dup (job_fds[0]);
           }
-#endif
 
         /* Reap anything that's currently waiting.  */
         reap_children (0, 0);
@@ -1836,24 +1766,11 @@ new_job (struct file *file)
         if (!children)
           fatal (NILF, "INTERNAL: no children as we go to sleep on read\n");
 
-#ifdef WINDOWS32
-        /* On Windows we simply wait for the jobserver semaphore to become
-         * signalled or one of our child processes to terminate.
-         */
-        got_token = wait_for_semaphore_or_child_process();
-        if (got_token < 0)
-          {
-            DWORD err = GetLastError();
-            fatal (NILF, _("semaphore or child process wait: (Error %ld: %s)"),
-                   err, map_windows32_error_to_string(err));
-          }
-#else
         /* Set interruptible system calls, and read() for a job token.  */
 	set_child_handler_action_flags (1, waiting_jobs != NULL);
 	got_token = read (job_rfd, &token, 1);
 	saved_errno = errno;
 	set_child_handler_action_flags (0, waiting_jobs != NULL);
-#endif
 
         /* If we got one, we're done here.  */
 	if (got_token == 1)
@@ -1863,7 +1780,6 @@ new_job (struct file *file)
             break;
           }
 
-#ifndef WINDOWS32
         /* If the error _wasn't_ expected (EINTR or EBADF), punt.  Otherwise,
            go back and reap_children(), and try again.  */
 	errno = saved_errno;
@@ -1871,39 +1787,22 @@ new_job (struct file *file)
           pfatal_with_name (_("read jobs pipe"));
         if (errno == EBADF)
           DB (DB_JOBS, ("Read returned EBADF.\n"));
-#endif
       }
 #endif
 
   ++jobserver_tokens;
 
-  /* Trace the build.
-     Use message here so that changes to working directories are logged.  */
-  if (trace_flag)
-    {
-      char *newer = allocated_variable_expand_for_file ("$?", c->file);
-      char *nm;
-
-      if (! cmds->fileinfo.filenm)
-        nm = _("<builtin>");
-      else
-        {
-          nm = alloca (strlen (cmds->fileinfo.filenm) + 1 + 11 + 1);
-          sprintf (nm, "%s:%lu", cmds->fileinfo.filenm, cmds->fileinfo.lineno);
-        }
-
-      if (newer[0] == '\0')
-        message (0, _("%s: target `%s' does not exist"), nm, c->file->name);
-      else
-        message (0, _("%s: update target `%s' due to: %s"), nm,
-                 c->file->name, newer);
-
-      free (newer);
-    }
-
-
   /* The job is now primed.  Start it running.
      (This will notice if there is in fact no recipe.)  */
+  if (cmds->fileinfo.filenm)
+    DB (DB_BASIC, (_("Invoking recipe from %s:%lu to update target `%s'.\n"),
+                   cmds->fileinfo.filenm, cmds->fileinfo.lineno,
+                   c->file->name));
+  else
+    DB (DB_BASIC, (_("Invoking builtin recipe to update target `%s'.\n"),
+                   c->file->name));
+
+
   start_waiting_job (c);
 
   if (job_slots == 1 || not_parallel)
@@ -2201,7 +2100,7 @@ exec_command (char **argv, char **envp)
     }
 
   /* wait and reap last child */
-  hWaitPID = process_wait_for_any(1, 0);
+  hWaitPID = process_wait_for_any();
   while (hWaitPID)
     {
       /* was an error found on this process? */
@@ -2387,7 +2286,7 @@ void clean_tmp (void)
 static char **
 construct_command_argv_internal (char *line, char **restp, char *shell,
                                  char *shellflags, char *ifs, int flags,
-                                 char **batch_filename UNUSED)
+				 char **batch_filename_ptr)
 {
 #ifdef __MSDOS__
   /* MSDOS supports both the stock DOS shell and ports of Unixy shells.
@@ -2535,9 +2434,6 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
   if (*line == '\0')
     return 0;
 
-  if (shellflags == 0)
-    shellflags = posix_pedantic ? "-ec" : "-c";
-
   /* See if it is safe to parse commands internally.  */
   if (shell == 0)
     shell = default_shell;
@@ -2633,9 +2529,10 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
             {
               /* Backslash-newline is handled differently depending on what
                  kind of string we're in: inside single-quoted strings you
-                 keep them; in double-quoted strings they disappear.  For
-                 DOS/Windows/OS2, if we don't have a POSIX shell, we keep the
-                 pre-POSIX behavior of removing the backslash-newline.  */
+                 keep them; in double-quoted strings they disappear.
+	         For DOS/Windows/OS2, if we don't have a POSIX shell,
+		 we keep the pre-POSIX behavior of removing the
+		 backslash-newline.  */
               if (instring == '"'
 #if defined (__MSDOS__) || defined (__EMX__) || defined (WINDOWS32)
 		  || !unixy_shell
@@ -2895,12 +2792,12 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
 
     unsigned int shell_len = strlen (shell);
     unsigned int line_len = strlen (line);
-    unsigned int sflags_len = shellflags ? strlen (shellflags) : 0;
+    unsigned int sflags_len = strlen (shellflags);
     char *command_ptr = NULL; /* used for batch_mode_shell mode */
     char *new_line;
 
 # ifdef __EMX__ /* is this necessary? */
-    if (!unixy_shell && shellflags)
+    if (!unixy_shell)
       shellflags[0] = '/'; /* "/c" */
 # endif
 
@@ -2962,28 +2859,19 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
 
 	new_argv = xmalloc (4 * sizeof (char *));
 	new_argv[0] = xstrdup(shell);
-	new_argv[1] = xstrdup(shellflags ? shellflags : "");
+	new_argv[1] = xstrdup(shellflags);
 	new_argv[2] = line;
 	new_argv[3] = NULL;
 	return new_argv;
       }
 
-    new_line = alloca ((shell_len*2) + 1 + sflags_len + 1
+    new_line = alloca (shell_len + 1 + sflags_len + 1
                              + (line_len*2) + 1);
     ap = new_line;
-    /* Copy SHELL, escaping any characters special to the shell.  If
-       we don't escape them, construct_command_argv_internal will
-       recursively call itself ad nauseam, or until stack overflow,
-       whichever happens first.  */
-    for (p = shell; *p != '\0'; ++p)
-      {
-	if (strchr (sh_chars, *p) != 0)
-	  *(ap++) = '\\';
-	*(ap++) = *p;
-      }
+    memcpy (ap, shell, shell_len);
+    ap += shell_len;
     *(ap++) = ' ';
-    if (shellflags)
-      memcpy (ap, shellflags, sflags_len);
+    memcpy (ap, shellflags, sflags_len);
     ap += sflags_len;
     *(ap++) = ' ';
     command_ptr = ap;
@@ -3050,7 +2938,7 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
       new_argv = xmalloc(2 * sizeof (char *));
       new_argv[0] = xstrdup ("");
       new_argv[1] = NULL;
-    } else if ((no_default_sh_exe || batch_mode_shell) && batch_filename) {
+    } else if ((no_default_sh_exe || batch_mode_shell) && batch_filename_ptr) {
       int temp_fd;
       FILE* batch = NULL;
       int id = GetCurrentProcessId();
@@ -3058,10 +2946,10 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
 
       /* create a file name */
       sprintf(fbuf, "make%d", id);
-      *batch_filename = create_batch_file (fbuf, unixy_shell, &temp_fd);
+      *batch_filename_ptr = create_batch_file (fbuf, unixy_shell, &temp_fd);
 
       DB (DB_JOBS, (_("Creating temporary batch file %s\n"),
-                    *batch_filename));
+                    *batch_filename_ptr));
 
       /* Create a FILE object for the batch file, and write to it the
 	 commands to be executed.  Put the batch file in TEXT mode.  */
@@ -3079,9 +2967,9 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
       new_argv = xmalloc(3 * sizeof (char *));
       if (unixy_shell) {
         new_argv[0] = xstrdup (shell);
-        new_argv[1] = *batch_filename; /* only argv[0] gets freed later */
+        new_argv[1] = *batch_filename_ptr; /* only argv[0] gets freed later */
       } else {
-        new_argv[0] = xstrdup (*batch_filename);
+        new_argv[0] = xstrdup (*batch_filename_ptr);
         new_argv[1] = NULL;
       }
       new_argv[2] = NULL;
@@ -3089,8 +2977,7 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
 #endif /* WINDOWS32 */
 
     if (unixy_shell)
-      new_argv = construct_command_argv_internal (new_line, 0, 0, 0, 0,
-                                                  flags, 0);
+      new_argv = construct_command_argv_internal (new_line, 0, 0, 0, 0, flags, 0);
 
 #ifdef __EMX__
     else if (!unixy_shell)
@@ -3200,7 +3087,7 @@ construct_command_argv_internal (char *line, char **restp, char *shell,
 
 char **
 construct_command_argv (char *line, char **restp, struct file *file,
-                        int cmd_flags, char **batch_filename)
+                        int cmd_flags, char **batch_filename_ptr)
 {
   char *shell, *ifs, *shellflags;
   char **argv;
@@ -3314,7 +3201,7 @@ construct_command_argv (char *line, char **restp, struct file *file,
   }
 
   argv = construct_command_argv_internal (line, restp, shell, shellflags, ifs,
-                                          cmd_flags, batch_filename);
+                                          cmd_flags, batch_filename_ptr);
 
   free (shell);
   free (shellflags);

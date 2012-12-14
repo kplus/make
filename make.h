@@ -43,12 +43,6 @@ char *alloca ();
 # endif
 #endif
 
-/* Disable assert() unless we're a maintainer.
-   Some asserts are compute-intensive.  */
-#ifndef MAKE_MAINTAINER_MODE
-# define NDEBUG 1
-#endif
-
 
 #ifdef  CRAY
 /* This must happen before #include <signal.h> so
@@ -66,12 +60,13 @@ char *alloca ();
 #include <signal.h>
 #include <stdio.h>
 #include <ctype.h>
-
 #ifdef HAVE_SYS_TIMEB_H
 /* SCO 3.2 "devsys 4.2" has a prototype for `ftime' in <time.h> that bombs
-   unless <sys/timeb.h> has been included first.  */
+   unless <sys/timeb.h> has been included first.  Does every system have a
+   <sys/timeb.h>?  If any does not, configure should check for it.  */
 # include <sys/timeb.h>
 #endif
+
 #if TIME_WITH_SYS_TIME
 # include <sys/time.h>
 # include <time.h>
@@ -153,13 +148,8 @@ unsigned int get_path_max (void);
 # define CHAR_BIT 8
 #endif
 
-#ifndef USHRT_MAX
-# define USHRT_MAX 65535
-#endif
-
-/* Nonzero if the integer type T is signed.
-   Use <= to avoid GCC warnings about always-false expressions.  */
-#define INTEGER_TYPE_SIGNED(t) ((t) -1 <= 0)
+/* Nonzero if the integer type T is signed.  */
+#define INTEGER_TYPE_SIGNED(t) ((t) -1 < 0)
 
 /* The minimum and maximum values for the integer type T.
    Use ~ (t) 0, not -1, for portability to 1's complement hosts.  */
@@ -354,7 +344,7 @@ extern int unixy_shell;
 #endif
 #ifdef SET_STACK_SIZE
 # include <sys/resource.h>
-extern struct rlimit stack_limit;
+struct rlimit stack_limit;
 #endif
 
 struct floc
@@ -462,8 +452,8 @@ void strcache_init (void);
 void strcache_print_stats (const char *prefix);
 int strcache_iscached (const char *str);
 const char *strcache_add (const char *str);
-const char *strcache_add_len (const char *str, unsigned int len);
-int strcache_setbufsize (unsigned int size);
+const char *strcache_add_len (const char *str, int len);
+int strcache_setbufsize (int size);
 
 #ifdef  HAVE_VFORK_H
 # include <vfork.h>
@@ -521,9 +511,9 @@ extern int just_print_flag, silent_flag, ignore_errors_flag, keep_going_flag;
 extern int print_data_base_flag, question_flag, touch_flag, always_make_flag;
 extern int env_overrides, no_builtin_rules_flag, no_builtin_variables_flag;
 extern int print_version_flag, print_directory_flag, check_symlink_flag;
-extern int warn_undefined_variables_flag, trace_flag, posix_pedantic;
-extern int not_parallel, second_expansion, clock_skew_detected;
-extern int rebuilding_makefiles, one_shell;
+extern int warn_undefined_variables_flag, posix_pedantic, not_parallel;
+extern int second_expansion, clock_skew_detected, rebuilding_makefiles;
+extern int one_shell;
 
 /* can we run commands via 'sh -c xxx' or must we use batch files? */
 extern int batch_mode_shell;

@@ -197,7 +197,7 @@ variable_expand_string (char *line, const char *string, long length)
 {
   struct variable *v;
   const char *p, *p1;
-  char *save;
+  char *abuf = NULL;
   char *o;
   unsigned int line_offset;
 
@@ -212,11 +212,16 @@ variable_expand_string (char *line, const char *string, long length)
       return (variable_buffer);
     }
 
-  /* We need a copy of STRING: due to eval, it's possible that it will get
-     freed as we process it (it might be the value of a variable that's reset
-     for example).  Also having a nil-terminated string is handy.  */
-  save = length < 0 ? xstrdup (string) : xstrndup (string, length);
-  p = save;
+  /* If we want a subset of the string, allocate a temporary buffer for it.
+     Most of the functions we use here don't work with length limits.  */
+  if (length > 0 && string[length] != '\0')
+    {
+      abuf = xmalloc(length+1);
+      memcpy(abuf, string, length);
+      abuf[length] = '\0';
+      string = abuf;
+    }
+  p = string;
 
   while (1)
     {
@@ -406,7 +411,8 @@ variable_expand_string (char *line, const char *string, long length)
       ++p;
     }
 
-  free (save);
+  if (abuf)
+    free (abuf);
 
   variable_buffer_output (o, "", 1);
   return (variable_buffer + line_offset);
@@ -493,7 +499,7 @@ variable_expand_for_file (const char *line, struct file *file)
 
 static char *
 variable_append (const char *name, unsigned int length,
-                 const struct variable_set_list *set, int local)
+                 const struct variable_set_list *set)
 {
   const struct variable *v;
   char *buf = 0;
@@ -505,14 +511,14 @@ variable_append (const char *name, unsigned int length,
   /* Try to find the variable in this variable set.  */
   v = lookup_variable_in_set (name, length, set->set);
 
-  /* If there isn't one, or this one is private, try the set above us.  */
-  if (!v || (!local && v->private_var))
-    return variable_append (name, length, set->next, 0);
+  /* If there isn't one, look to see if there's one in a set above us.  */
+  if (!v)
+    return variable_append (name, length, set->next);
 
   /* If this variable type is append, first get any upper values.
      If not, initialize the buffer.  */
   if (v->append)
-    buf = variable_append (name, length, set->next, 0);
+    buf = variable_append (name, length, set->next);
   else
     buf = initialize_variable_output ();
 
@@ -542,8 +548,7 @@ allocated_variable_append (const struct variable *v)
 
   variable_buffer = 0;
 
-  val = variable_append (v->name, strlen (v->name),
-                         current_variable_set_list, 1);
+  val = variable_append (v->name, strlen (v->name), current_variable_set_list);
   variable_buffer_output (val, "", 1);
   val = variable_buffer;
 

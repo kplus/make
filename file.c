@@ -788,10 +788,9 @@ set_command_state (struct file *file, enum cmd_state state)
 /* Convert an external file timestamp to internal form.  */
 
 FILE_TIMESTAMP
-file_timestamp_cons (const char *fname, time_t stamp, long int ns)
+file_timestamp_cons (const char *fname, time_t s, int ns)
 {
   int offset = ORDINARY_MTIME_MIN + (FILE_TIMESTAMP_HI_RES ? ns : 0);
-  FILE_TIMESTAMP s = stamp;
   FILE_TIMESTAMP product = (FILE_TIMESTAMP) s << FILE_TIMESTAMP_LO_BITS;
   FILE_TIMESTAMP ts = product + offset;
 
@@ -921,19 +920,6 @@ print_file (const void *item)
   const struct file *f = item;
 
   putchar ('\n');
-
-  if (f->cmds && f->cmds->recipe_prefix != cmd_prefix)
-    {
-      fputs (".RECIPEPREFIX = ", stdout);
-      cmd_prefix = f->cmds->recipe_prefix;
-      if (cmd_prefix != RECIPEPREFIX_DEFAULT)
-        putchar (cmd_prefix);
-      putchar ('\n');
-    }
-
-  if (f->variables != 0)
-    print_target_variables (f);
-
   if (!f->is_target)
     puts (_("# Not a target:"));
   printf ("%s:%s", f->name, f->double_colon ? ":" : "");

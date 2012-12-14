@@ -32,11 +32,9 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 # include <proto/dos.h>
 #endif
 #ifdef WINDOWS32
-# include <windows.h>
-# include <io.h>
-# include "pathstuff.h"
-# include "sub_proc.h"
-# include "w32err.h"
+#include <windows.h>
+#include <io.h>
+#include "pathstuff.h"
 #endif
 #ifdef __EMX__
 # include <sys/types.h>
@@ -153,9 +151,9 @@ static int debug_flag = 0;
 
 int db_level = 0;
 
-/* Tracing (--trace).  */
+/* Output level (--verbosity).  */
 
-int trace_flag = 0;
+static struct stringlist *verbosity_flags;
 
 #ifdef WINDOWS32
 /* Suspend make in main for a short time to allow debugger to attach */
@@ -360,8 +358,6 @@ static const char *const usage[] =
     N_("\
   -t, --touch                 Touch targets instead of remaking them.\n"),
     N_("\
-  --trace                     Print tracing information.\n"),
-    N_("\
   -v, --version               Print the version number of make and exit.\n"),
     N_("\
   -w, --print-directory       Print the current directory.\n"),
@@ -418,8 +414,9 @@ static const struct command_switch switches[] =
     { 'S', flag_off, &keep_going_flag, 1, 1, 0, 0, &default_keep_going_flag,
       "no-keep-going" },
     { 't', flag, &touch_flag, 1, 1, 1, 0, 0, "touch" },
-    { CHAR_MAX+3, flag, &trace_flag, 1, 1, 0, 0, 0, "trace" },
     { 'v', flag, &print_version_flag, 1, 1, 0, 0, 0, "version" },
+    { CHAR_MAX+3, string, &verbosity_flags, 1, 1, 0, 0, 0,
+      "verbosity" },
     { 'w', flag, &print_directory_flag, 1, 1, 0, 0, 0, "print-directory" },
     { CHAR_MAX+4, flag, &inhibit_print_directory_flag, 1, 1, 0, 0, 0,
       "no-print-directory" },
@@ -989,7 +986,7 @@ main (int argc, char **argv, char **envp)
   fatal_signal_mask = 0;
 #define	ADD_SIG(sig)	fatal_signal_mask |= sigmask (sig)
 #else
-#define	ADD_SIG(sig)    (void)sig
+#define	ADD_SIG(sig)    (void)sig      /* Needed to avoid warnings in MSVC.  */
 #endif
 #endif
 
@@ -1089,7 +1086,7 @@ main (int argc, char **argv, char **envp)
           program = strrchr (argv[0], '\\');
           if (program)
             {
-              argv0_len = strlen (program);
+              argv0_len = strlen(program);
               if (argv0_len > 4 && streq (&program[argv0_len - 4], ".exe"))
                 /* Remove .exe extension */
                 program[argv0_len - 4] = '\0';
@@ -1137,11 +1134,11 @@ main (int argc, char **argv, char **envp)
   define_variable_cname (".SHELLFLAGS", "-c", o_default, 0);
 
   /* Set up .FEATURES
-     Use a separate variable because define_variable_cname() is a macro and
-     some compilers (MSVC) don't like conditionals in macros.  */
+     We must do this in multiple calls because define_variable_cname() is
+     a macro and some compilers (MSVC) don't like conditionals in macros.  */
   {
     const char *features = "target-specific order-only second-expansion"
-                           " else-if shortest-stem undefine oneshell"
+                           " else-if shortest-stem undefine"
 #ifndef NO_ARCHIVES
                            " archives"
 #endif
@@ -1172,9 +1169,9 @@ main (int argc, char **argv, char **envp)
         while (*ep != '\0' && *ep != '=')
           ++ep;
 #ifdef WINDOWS32
-        if (!unix_path && strneq (envp[i], "PATH=", 5))
+        if (!unix_path && strneq(envp[i], "PATH=", 5))
           unix_path = ep+1;
-        else if (!strnicmp (envp[i], "Path=", 5)) {
+        else if (!strnicmp(envp[i], "Path=", 5)) {
           do_not_define = 1; /* it gets defined after loop exits */
           if (!windows32_path)
             windows32_path = ep+1;
@@ -1285,7 +1282,7 @@ main (int argc, char **argv, char **envp)
   always_make_flag = always_make_set && (restarts == 0);
 
   /* Print version information.  */
-  if (print_version_flag || print_data_base_flag || ISDB (DB_BASIC))
+  if (print_version_flag || print_data_base_flag || db_level)
     {
       print_version ();
 
@@ -1725,22 +1722,12 @@ main (int argc, char **argv, char **envp)
 
       cp = jobserver_fds->list[0];
 
-#ifdef WINDOWS32
-      if (! open_jobserver_semaphore(cp))
-        {
-          DWORD err = GetLastError();
-          fatal (NILF, _("internal error: unable to open jobserver semaphore `%s': (Error %ld: %s)"), 
-                 cp, err, map_windows32_error_to_string(err));
-        }
-      DB (DB_JOBS, (_("Jobserver client (semaphore %s)\n"), cp));
-#else
       if (sscanf (cp, "%d,%d", &job_fds[0], &job_fds[1]) != 2)
         fatal (NILF,
                _("internal error: invalid --jobserver-fds string `%s'"), cp);
 
       DB (DB_JOBS,
           (_("Jobserver client (fds %d,%d)\n"), job_fds[0], job_fds[1]));
-#endif
 
       /* The combination of a pipe + !job_slots means we're using the
          jobserver.  If !job_slots and we don't have a pipe, we can start
@@ -1752,11 +1739,11 @@ main (int argc, char **argv, char **envp)
         error (NILF,
                _("warning: -jN forced in submake: disabling jobserver mode."));
 
-#ifndef WINDOWS32
       /* Create a duplicate pipe, that will be closed in the SIGCHLD
          handler.  If this fails with EBADF, the parent has closed the pipe
          on us because it didn't think we were a submake.  If so, print a
          warning then default to -j1.  */
+
       else if ((job_rfd = dup (job_fds[0])) < 0)
         {
           if (errno != EBADF)
@@ -1766,16 +1753,11 @@ main (int argc, char **argv, char **envp)
                  _("warning: jobserver unavailable: using -j1.  Add `+' to parent make rule."));
           job_slots = 1;
         }
-#endif
 
       if (job_slots > 0)
         {
-#ifdef WINDOWS32
-          free_jobserver_semaphore ();
-#else
           close (job_fds[0]);
           close (job_fds[1]);
-#endif
           job_fds[0] = job_fds[1] = -1;
           free (jobserver_fds->list);
           free (jobserver_fds);
@@ -1791,27 +1773,8 @@ main (int argc, char **argv, char **envp)
       char *cp;
       char c = '+';
 
-#ifdef WINDOWS32
-      /* sub_proc.c cannot wait for more than MAXIMUM_WAIT_OBJECTS objects
-       * and one of them is the job-server semaphore object.  Limit the 
-       * number of available job slots to (MAXIMUM_WAIT_OBJECTS - 1). */
-
-      if (job_slots >= MAXIMUM_WAIT_OBJECTS)
-        {
-          job_slots = MAXIMUM_WAIT_OBJECTS - 1;
-          DB (DB_JOBS, (_("Jobserver slots limited to %d\n"), job_slots));
-        }
-
-      if (! create_jobserver_semaphore(job_slots - 1))
-        {
-          DWORD err = GetLastError();
-          fatal (NILF, _("creating jobserver semaphore: (Error %ld: %s)"),
-                 err, map_windows32_error_to_string(err));
-        }
-#else
       if (pipe (job_fds) < 0 || (job_rfd = dup (job_fds[0])) < 0)
 	pfatal_with_name (_("creating jobs pipe"));
-#endif
 
       /* Every make assumes that it always has one job it can run.  For the
          submakes it's the token they were given by their parent.  For the
@@ -1820,10 +1783,6 @@ main (int argc, char **argv, char **envp)
 
       master_job_slots = job_slots;
 
-#ifdef WINDOWS32
-      /* We're using the jobserver so set job_slots to 0. */
-      job_slots = 0;
-#else
       while (--job_slots)
         {
           int r;
@@ -1832,17 +1791,11 @@ main (int argc, char **argv, char **envp)
           if (r != 1)
             pfatal_with_name (_("init jobserver pipe"));
         }
-#endif
 
       /* Fill in the jobserver_fds struct for our children.  */
 
-#ifdef WINDOWS32
-      cp = xmalloc (MAX_PATH + 1);
-      strcpy (cp, get_jobserver_semaphore_name());
-#else
       cp = xmalloc ((sizeof ("1024")*2)+1);
       sprintf (cp, "%d,%d", job_fds[0], job_fds[1]);
-#endif
 
       jobserver_fds = (struct stringlist *)
                         xmalloc (sizeof (struct stringlist));
@@ -2135,17 +2088,12 @@ main (int argc, char **argv, char **envp)
 
           ++restarts;
 
-          /* If we're re-exec'ing the first make, put back the number of
-             job slots so define_makefiles() will get it right.  */
-          if (master_job_slots)
-            job_slots = master_job_slots;
-
           /* Reset makeflags in case they were changed.  */
           {
             const char *pv = define_makeflags (1, 1);
             char *p = alloca (sizeof ("MAKEFLAGS=") + strlen (pv) + 1);
             sprintf (p, "MAKEFLAGS=%s", pv);
-            putenv (allocated_variable_expand (p));
+            putenv (p);
           }
 
 	  if (ISDB (DB_BASIC))
@@ -2876,6 +2824,9 @@ define_makeflags (int all, int makefile)
 		       && (*(unsigned int *) cs->value_ptr ==
 			   *(unsigned int *) cs->noarg_value))
 		ADD_FLAG ("", 0); /* Optional value omitted; see below.  */
+	      else if (cs->c == 'j')
+		/* Special case for `-j'.  */
+		ADD_FLAG ("1", 1);
 	      else
 		{
 		  char *buf = alloca (30);
@@ -3155,30 +3106,20 @@ clean_jobserver (int status)
      have written all our tokens so do that now.  If tokens are left
      after any other error code, that's bad.  */
 
-#ifdef WINDOWS32
-  if (has_jobserver_semaphore() && jobserver_tokens)
-#else
   if (job_fds[0] != -1 && jobserver_tokens)
-#endif
     {
       if (status != 2)
         error (NILF,
                "INTERNAL: Exiting with %u jobserver tokens (should be 0)!",
                jobserver_tokens);
       else
-        /* Don't write back the "free" token */
-        while (--jobserver_tokens)
+        while (jobserver_tokens--)
           {
-#ifdef WINDOWS32
-            if (! release_jobserver_semaphore())
-              perror_with_name ("release_jobserver_semaphore", "");
-#else
             int r;
 
             EINTRLOOP (r, write (job_fds[1], &token, 1));
             if (r != 1)
               perror_with_name ("write", "");
-#endif
           }
     }
 
@@ -3190,27 +3131,18 @@ clean_jobserver (int status)
       /* We didn't write one for ourself, so start at 1.  */
       unsigned int tcnt = 1;
 
-#ifdef WINDOWS32
-      while (acquire_jobserver_semaphore())
-          ++tcnt;
-#else
       /* Close the write side, so the read() won't hang.  */
       close (job_fds[1]);
 
       while (read (job_fds[0], &token, 1) == 1)
         ++tcnt;
-#endif
 
       if (tcnt != master_job_slots)
         error (NILF,
                "INTERNAL: Exiting with %u jobserver tokens available; should be %u!",
                tcnt, master_job_slots);
 
-#ifdef WINDOWS32
-      free_jobserver_semaphore();
-#else
       close (job_fds[0]);
-#endif
 
       /* Clean out jobserver_fds so we don't pass this information to any
          sub-makes.  Also reset job_slots since it will be put on the command

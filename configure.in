@@ -17,10 +17,10 @@
 # You should have received a copy of the GNU General Public License along with
 # this program.  If not, see <http://www.gnu.org/licenses/>.
 
-AC_INIT([GNU make],[3.82.90],[bug-make@gnu.org])
+AC_INIT([GNU make],[3.82],[bug-make@gnu.org])
 
 AC_PREREQ(2.59)
-AC_REVISION([[$Id: configure.in,v 1.159 2011/11/15 22:56:26 psmith Exp $]])
+AC_REVISION([[$Id: configure.in,v 1.156 2010/07/28 05:39:50 psmith Exp $]])
 
 # Autoconf setup
 AC_CONFIG_AUX_DIR(config)
@@ -301,21 +301,16 @@ if test "$make_cv_sa_restart" != no; then
      [Define to 1 if <signal.h> defines the SA_RESTART constant.])
 fi
 
-# Only allow jobserver on systems that support it
-case "/$ac_cv_func_pipe/$ac_cv_func_sigaction/$make_cv_sa_restart/$has_wait_nohang/" in
-  */no/*) make_cv_job_server=no ;;
-esac
-
-# Also supported on OS2 and MinGW
+# enable make_cv_sa_restart for OS/2 so that the jobserver will be enabled,
+# but do it after HAVE_SA_RESTART has been defined.
 case "$host_os" in
-  os2*|mingw*) make_cv_job_server=yes ;;
+  os2*) make_cv_sa_restart=yes ;;
 esac
 
-# If we support it and the user didn't disable it, build with jobserver
-case "/$make_cv_job_server/$user_job_server/" in
-  */no/*) : no jobserver ;;
-  *) AC_DEFINE(MAKE_JOBSERVER, 1,
-               [Define to 1 to enable job server support in GNU make.]) ;;
+case "$ac_cv_func_pipe/$ac_cv_func_sigaction/$make_cv_sa_restart/$has_wait_nohang/$make_cv_job_server" in
+  yes/yes/yes/yes/yes)
+    AC_DEFINE(MAKE_JOBSERVER, 1,
+              [Define to 1 to enable job server support in GNU make.]);;
 esac
 
 # if we have both lstat() and readlink() then we can support symlink

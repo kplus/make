@@ -355,6 +355,11 @@ update_file (struct file *file, unsigned int depth)
 static void
 complain (struct file *file)
 {
+  const char *msg_noparent
+    = _("%sNo rule to make target `%s'%s");
+  const char *msg_parent
+    = _("%sNo rule to make target `%s', needed by `%s'%s");
+
   /* If this file has no_diag set then it means we tried to update it
      before in the dontcare mode and failed. The target that actually
      failed is not necessarily this file but could be one of its direct
@@ -374,11 +379,6 @@ complain (struct file *file)
 
   if (d == 0)
     {
-      const char *msg_noparent
-        = _("%sNo rule to make target `%s'%s");
-      const char *msg_parent
-        = _("%sNo rule to make target `%s', needed by `%s'%s");
-
       /* Didn't find any dependencies to complain about. */
       if (!keep_going_flag)
         {
@@ -1113,10 +1113,6 @@ touch_file (struct file *file)
   if (!silent_flag)
     message (0, "touch %s", file->name);
 
-  /* Print-only (-n) takes precedence over touch (-t).  */
-  if (just_print_flag)
-    return 0;
-
 #ifndef	NO_ARCHIVES
   if (ar_name (file->name))
     return ar_touch (file->name);
@@ -1538,7 +1534,8 @@ library_search (const char *lib, FILE_TIMESTAMP *mtime_ptr)
   unsigned int liblen;
 
   /* Information about the earliest (in the vpath sequence) match.  */
-  unsigned int best_vpath = 0, best_path = 0;
+  unsigned int best_vpath, best_path;
+  unsigned int std_dirs = 0;
 
   char **dp;
 
@@ -1557,7 +1554,6 @@ library_search (const char *lib, FILE_TIMESTAMP *mtime_ptr)
       static char *buf = NULL;
       static unsigned int buflen = 0;
       static int libdir_maxlen = -1;
-      static unsigned int std_dirs = 0;
       char *libbuf = variable_expand ("");
 
       /* Expand the pattern using LIB as a replacement.  */

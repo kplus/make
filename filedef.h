@@ -63,6 +63,7 @@ struct file
 
     short int update_status;	/* Status of the last attempt to update,
 				   or -1 if none has been made.  */
+
     enum cmd_state		/* State of the commands.  */
       {		/* Note: It is important that cs_not_started be zero.  */
 	cs_not_started,		/* Not yet started.  */
@@ -118,7 +119,7 @@ void print_file_data_base (void);
 
 #if FILE_TIMESTAMP_HI_RES
 # define FILE_TIMESTAMP_STAT_MODTIME(fname, st) \
-    file_timestamp_cons (fname, (st).st_mtime, (st).ST_MTIM_NSEC)
+    file_timestamp_cons (fname, (st).st_mtime, (st).st_mtim.ST_MTIM_NSEC)
 #else
 # define FILE_TIMESTAMP_STAT_MODTIME(fname, st) \
     file_timestamp_cons (fname, (st).st_mtime, 0)
@@ -155,7 +156,7 @@ void print_file_data_base (void);
     * 302 / 1000) \
    + 1 + 1 + 4 + 25)
 
-FILE_TIMESTAMP file_timestamp_cons (char const *, time_t, long int);
+FILE_TIMESTAMP file_timestamp_cons (char const *, time_t, int);
 FILE_TIMESTAMP file_timestamp_now (int *);
 void file_timestamp_sprintf (char *p, FILE_TIMESTAMP ts);
 

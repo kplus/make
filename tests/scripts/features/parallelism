@@ -98,17 +98,14 @@ fail.1 fail.2 fail.3:
 ok:
 	\@sleep 4
 	\@echo Ok done",
-              '-rR -j5', "Fail
-#MAKEFILE#:6: recipe for target `fail.1' failed
+              '-rR -j5', 'Fail
 #MAKE#: *** [fail.1] Error 1
 #MAKE#: *** Waiting for unfinished jobs....
 Fail
-#MAKEFILE#:6: recipe for target `fail.2' failed
 #MAKE#: *** [fail.2] Error 1
 Fail
-#MAKEFILE#:6: recipe for target `fail.3' failed
 #MAKE#: *** [fail.3] Error 1
-Ok done",
+Ok done',
              512);
 
 
@@ -165,23 +162,6 @@ inc.mk:
 !,
               '--no-print-directory -j2', "#MAKE#[1]: warning: -jN forced in submake: disabling jobserver mode.\nall\n");
 
-rmfiles('inc.mk');
-
-# TEST #11: Make sure -jN from MAKEFLAGS is processed even when we re-exec
-# See Savannah bug #33873
-
-$extraENV{MAKEFLAGS} = '-j4';
-
-run_make_test(q!
-things = thing1 thing2
-all: $(things)
-$(things):; @echo '$@ start'; sleep 1; echo '$@ end'
--include inc.mk
-inc.mk: ; @touch $@
-!,
-              '', "thing1 start\nthing2 start\nthing1 end\nthing2 end\n");
-
-delete $extraENV{MAKEFLAGS};
 rmfiles('inc.mk');
 
 if ($all_tests) {
