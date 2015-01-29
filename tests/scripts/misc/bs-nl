@@ -50,27 +50,80 @@ run_make_test("squote:;\@echo 'squ\\\n\t\t   ote'\n",
 # Backslash-newlines in variable values
 
 # Simple
-run_make_test("
-var = he\\\nllo
-var:;\@echo '|\$(var)|'",
+run_make_test(q!
+var = he\
+llo
+var:;@echo '|$(var)|'!,
               '', "|he llo|");
 
-# Preserve preceding space
-run_make_test("
-var = he  \\\nllo
-var:;\@echo '|\$(var)|'",
-              '', "|he   llo|");
+# Condense trailing space
+run_make_test(q!
+var = he  \
+llo
+var:;@echo '|$(var)|'!,
+              '', "|he llo|");
 
 # Remove leading space
-run_make_test("
-var = he\\\n    llo
-var:;\@echo '|\$(var)|'",
+run_make_test(q!
+var = he\
+    llo
+var:;@echo '|$(var)|'!,
               '', "|he llo|");
 
-# One space per bs-nl
-run_make_test("
-var = he\\\n\\\n\\\n    llo
-var:;\@echo '|\$(var)|'",
+# Multiple bs/nl condensed
+run_make_test(q!
+var = he\
+\
+\
+    llo
+var:;@echo '|$(var)|'!,
+              '', "|he llo|");
+
+# POSIX: Preserve trailing space
+run_make_test(q!
+.POSIX:
+x = y
+var = he  \
+llo
+var:;@echo '|$(var)|'!,
               '', "|he   llo|");
+
+# POSIX: One space per bs-nl
+run_make_test(q!
+.POSIX:
+x = y
+var = he\
+\
+\
+    llo
+var:;@echo '|$(var)|'!,
+              '', "|he   llo|");
+
+# Savannah #39035: handle whitespace in call
+run_make_test(q!
+f = echo $(1)
+t:; @$(call f,"a \
+            b"); \
+        $(call f,"a \
+            b")
+!,
+              '', "a b\na b\n");
+
+# Savannah #38945: handle backslash CRLF
+# We need our own makefile so we can set binmode
+my $m1 = get_tmpfile();
+open(MAKEFILE, "> $m1");
+binmode(MAKEFILE);
+print MAKEFILE "FOO = foo \\\r\n";
+close(MAKEFILE);
+
+my $m2 = get_tmpfile();
+open(MAKEFILE, "> $m2");
+print MAKEFILE "include $m1\ndefine BAR\nall: ; \@echo \$(FOO) bar\nendef\n\$(eval \$(BAR))\n";
+close(MAKEFILE);
+
+run_make_with_options($m2, '', get_logfile());
+compare_output("foo bar\n", get_logfile(1));
+
 
 1;

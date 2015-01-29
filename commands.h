@@ -1,7 +1,5 @@
 /* Definition of data structures describing shell commands for GNU Make.
-Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
-2010 Free Software Foundation, Inc.
+Copyright (C) 1988-2014 Free Software Foundation, Inc.
 This file is part of GNU Make.
 
 GNU Make is free software; you can redistribute it and/or modify it under the
@@ -21,19 +19,20 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 
 struct commands
   {
-    struct floc fileinfo;	/* Where commands were defined.  */
-    char *commands;		/* Commands text.  */
-    unsigned int ncommand_lines;/* Number of command lines.  */
-    char **command_lines;	/* Commands chopped up into lines.  */
-    char *lines_flags;		/* One set of flag bits for each line.  */
-    int any_recurse;		/* Nonzero if any `lines_recurse' elt has */
-				/* the COMMANDS_RECURSE bit set.  */
+    gmk_floc fileinfo;          /* Where commands were defined.  */
+    char *commands;             /* Commands text.  */
+    char **command_lines;       /* Commands chopped up into lines.  */
+    char *lines_flags;          /* One set of flag bits for each line.  */
+    unsigned short ncommand_lines;/* Number of command lines.  */
+    char recipe_prefix;         /* Recipe prefix for this command set.  */
+    unsigned int any_recurse:1; /* Nonzero if any 'lines_flags' elt has */
+                                /* the COMMANDS_RECURSE bit set.  */
   };
 
-/* Bits in `lines_flags'.  */
-#define	COMMANDS_RECURSE	1 /* Recurses: + or $(MAKE).  */
-#define	COMMANDS_SILENT		2 /* Silent: @.  */
-#define	COMMANDS_NOERROR	4 /* No errors: -.  */
+/* Bits in 'lines_flags'.  */
+#define COMMANDS_RECURSE        1 /* Recurses: + or $(MAKE).  */
+#define COMMANDS_SILENT         2 /* Silent: @.  */
+#define COMMANDS_NOERROR        4 /* No errors: -.  */
 
 void execute_file_commands (struct file *file);
 void print_commands (const struct commands *cmds);

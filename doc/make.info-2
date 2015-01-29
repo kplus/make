@@ -4,16 +4,16 @@ This file documents the GNU `make' utility, which determines
 automatically which pieces of a large program need to be recompiled,
 and issues the commands to recompile them.
 
-   This is Edition 0.71, last updated 19 July 2010, of `The GNU Make
-Manual', for GNU `make' version 3.82.
+   This is Edition 0.73, last updated 5 October 2014, of `The GNU Make
+Manual', for GNU `make' version 4.1.
 
    Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996,
 1997, 1998, 1999, 2000, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
-2010 Free Software Foundation, Inc.
+2010, 2011, 2012, 2013, 2014 Free Software Foundation, Inc.
 
      Permission is granted to copy, distribute and/or modify this
      document under the terms of the GNU Free Documentation License,
-     Version 1.2 or any later version published by the Free Software
+     Version 1.3 or any later version published by the Free Software
      Foundation; with no Invariant Sections, with the Front-Cover Texts
      being "A GNU Manual," and with the Back-Cover Texts as in (a)
      below.  A copy of the license is included in the section entitled
@@ -29,9 +29,419 @@ START-INFO-DIR-ENTRY
 END-INFO-DIR-ENTRY
 
 
+File: make.info,  Node: Options Summary,  Prev: Testing,  Up: Running
+
+9.7 Summary of Options
+======================
+
+Here is a table of all the options `make' understands:
+
+`-b'
+`-m'
+     These options are ignored for compatibility with other versions of
+     `make'.
+
+`-B'
+`--always-make'
+     Consider all targets out-of-date.  GNU `make' proceeds to consider
+     targets and their prerequisites using the normal algorithms;
+     however, all targets so considered are always remade regardless of
+     the status of their prerequisites.  To avoid infinite recursion, if
+     `MAKE_RESTARTS' (*note Other Special Variables: Special
+     Variables.) is set to a number greater than 0 this option is
+     disabled when considering whether to remake makefiles (*note How
+     Makefiles Are Remade: Remaking Makefiles.).
+
+`-C DIR'
+`--directory=DIR'
+     Change to directory DIR before reading the makefiles.  If multiple
+     `-C' options are specified, each is interpreted relative to the
+     previous one: `-C / -C etc' is equivalent to `-C /etc'.  This is
+     typically used with recursive invocations of `make' (*note
+     Recursive Use of `make': Recursion.).
+
+`-d'
+     Print debugging information in addition to normal processing.  The
+     debugging information says which files are being considered for
+     remaking, which file-times are being compared and with what
+     results, which files actually need to be remade, which implicit
+     rules are considered and which are applied--everything interesting
+     about how `make' decides what to do.  The `-d' option is
+     equivalent to `--debug=a' (see below).
+
+`--debug[=OPTIONS]'
+     Print debugging information in addition to normal processing.
+     Various levels and types of output can be chosen.  With no
+     arguments, print the "basic" level of debugging.  Possible
+     arguments are below; only the first character is considered, and
+     values must be comma- or space-separated.
+
+    `a (all)'
+          All types of debugging output are enabled.  This is
+          equivalent to using `-d'.
+
+    `b (basic)'
+          Basic debugging prints each target that was found to be
+          out-of-date, and whether the build was successful or not.
+
+    `v (verbose)'
+          A level above `basic'; includes messages about which
+          makefiles were parsed, prerequisites that did not need to be
+          rebuilt, etc.  This option also enables `basic' messages.
+
+    `i (implicit)'
+          Prints messages describing the implicit rule searches for
+          each target.  This option also enables `basic' messages.
+
+    `j (jobs)'
+          Prints messages giving details on the invocation of specific
+          sub-commands.
+
+    `m (makefile)'
+          By default, the above messages are not enabled while trying
+          to remake the makefiles.  This option enables messages while
+          rebuilding makefiles, too.  Note that the `all' option does
+          enable this option.  This option also enables `basic'
+          messages.
+
+    `n (none)'
+          Disable all debugging currently enabled.  If additional
+          debugging flags are encountered after this they will still
+          take effect.
+
+`-e'
+`--environment-overrides'
+     Give variables taken from the environment precedence over
+     variables from makefiles.  *Note Variables from the Environment:
+     Environment.
+
+`--eval=STRING'
+     Evaluate STRING as makefile syntax.  This is a command-line
+     version of the `eval' function (*note Eval Function::).  The
+     evaluation is performed after the default rules and variables have
+     been defined, but before any makefiles are read.
+
+`-f FILE'
+`--file=FILE'
+`--makefile=FILE'
+     Read the file named FILE as a makefile.  *Note Writing Makefiles:
+     Makefiles.
+
+`-h'
+`--help'
+     Remind you of the options that `make' understands and then exit.
+
+`-i'
+`--ignore-errors'
+     Ignore all errors in recipes executed to remake files.  *Note
+     Errors in Recipes: Errors.
+
+`-I DIR'
+`--include-dir=DIR'
+     Specifies a directory DIR to search for included makefiles.  *Note
+     Including Other Makefiles: Include.  If several `-I' options are
+     used to specify several directories, the directories are searched
+     in the order specified.
+
+`-j [JOBS]'
+`--jobs[=JOBS]'
+     Specifies the number of recipes (jobs) to run simultaneously.
+     With no argument, `make' runs as many recipes simultaneously as
+     possible.  If there is more than one `-j' option, the last one is
+     effective.  *Note Parallel Execution: Parallel, for more
+     information on how recipes are run.  Note that this option is
+     ignored on MS-DOS.
+
+`-k'
+`--keep-going'
+     Continue as much as possible after an error.  While the target that
+     failed, and those that depend on it, cannot be remade, the other
+     prerequisites of these targets can be processed all the same.
+     *Note Testing the Compilation of a Program: Testing.
+
+`-l [LOAD]'
+`--load-average[=LOAD]'
+`--max-load[=LOAD]'
+     Specifies that no new recipes should be started if there are other
+     recipes running and the load average is at least LOAD (a
+     floating-point number).  With no argument, removes a previous load
+     limit.  *Note Parallel Execution: Parallel.
+
+`-L'
+`--check-symlink-times'
+     On systems that support symbolic links, this option causes `make'
+     to consider the timestamps on any symbolic links in addition to the
+     timestamp on the file referenced by those links.  When this option
+     is provided, the most recent timestamp among the file and the
+     symbolic links is taken as the modification time for this target
+     file.
+
+`-n'
+`--just-print'
+`--dry-run'
+`--recon'
+     Print the recipe that would be executed, but do not execute it
+     (except in certain circumstances).  *Note Instead of Executing
+     Recipes: Instead of Execution.
+
+`-o FILE'
+`--old-file=FILE'
+`--assume-old=FILE'
+     Do not remake the file FILE even if it is older than its
+     prerequisites, and do not remake anything on account of changes in
+     FILE.  Essentially the file is treated as very old and its rules
+     are ignored.  *Note Avoiding Recompilation of Some Files: Avoiding
+     Compilation.
+
+`-O[TYPE]'
+`--output-sync[=TYPE]'
+     Ensure that the complete output from each recipe is printed in one
+     uninterrupted sequence.  This option is only useful when using the
+     `--jobs' option to run multiple recipes simultaneously (*note
+     Parallel Execution: Parallel.)  Without this option output will be
+     displayed as it is generated by the recipes.
+
+     With no type or the type `target', output from the entire recipe
+     of each target is grouped together.  With the type `line', output
+     from each line in the recipe is grouped together.  With the type
+     `recurse', the output from an entire recursive make is grouped
+     together.  With the type `none', no output synchronization is
+     performed.  *Note Output During Parallel Execution: Parallel
+     Output.
+
+`-p'
+`--print-data-base'
+     Print the data base (rules and variable values) that results from
+     reading the makefiles; then execute as usual or as otherwise
+     specified.  This also prints the version information given by the
+     `-v' switch (see below).  To print the data base without trying to
+     remake any files, use `make -qp'.  To print the data base of
+     predefined rules and variables, use `make -p -f /dev/null'.  The
+     data base output contains file name and line number information for
+     recipe and variable definitions, so it can be a useful debugging
+     tool in complex environments.
+
+`-q'
+`--question'
+     "Question mode".  Do not run any recipes, or print anything; just
+     return an exit status that is zero if the specified targets are
+     already up to date, one if any remaking is required, or two if an
+     error is encountered.  *Note Instead of Executing Recipes: Instead
+     of Execution.
+
+`-r'
+`--no-builtin-rules'
+     Eliminate use of the built-in implicit rules (*note Using Implicit
+     Rules: Implicit Rules.).  You can still define your own by writing
+     pattern rules (*note Defining and Redefining Pattern Rules:
+     Pattern Rules.).  The `-r' option also clears out the default list
+     of suffixes for suffix rules (*note Old-Fashioned Suffix Rules:
+     Suffix Rules.).  But you can still define your own suffixes with a
+     rule for `.SUFFIXES', and then define your own suffix rules.  Note
+     that only _rules_ are affected by the `-r' option; default
+     variables remain in effect (*note Variables Used by Implicit
+     Rules: Implicit Variables.); see the `-R' option below.
+
+`-R'
+`--no-builtin-variables'
+     Eliminate use of the built-in rule-specific variables (*note
+     Variables Used by Implicit Rules: Implicit Variables.).  You can
+     still define your own, of course.  The `-R' option also
+     automatically enables the `-r' option (see above), since it
+     doesn't make sense to have implicit rules without any definitions
+     for the variables that they use.
+
+`-s'
+`--silent'
+`--quiet'
+     Silent operation; do not print the recipes as they are executed.
+     *Note Recipe Echoing: Echoing.
+
+`-S'
+`--no-keep-going'
+`--stop'
+     Cancel the effect of the `-k' option.  This is never necessary
+     except in a recursive `make' where `-k' might be inherited from
+     the top-level `make' via `MAKEFLAGS' (*note Recursive Use of
+     `make': Recursion.)  or if you set `-k' in `MAKEFLAGS' in your
+     environment.
+
+`-t'
+`--touch'
+     Touch files (mark them up to date without really changing them)
+     instead of running their recipes.  This is used to pretend that the
+     recipes were done, in order to fool future invocations of `make'.
+     *Note Instead of Executing Recipes: Instead of Execution.
+
+`--trace'
+     Show tracing information for `make' execution.  Prints the entire
+     recipe to be executed, even for recipes that are normally silent
+     (due to `.SILENT' or `@').  Also prints the makefile name and line
+     number where the recipe was defined, and information on why the
+     target is being rebuilt.
+
+`-v'
+`--version'
+     Print the version of the `make' program plus a copyright, a list
+     of authors, and a notice that there is no warranty; then exit.
+
+`-w'
+`--print-directory'
+     Print a message containing the working directory both before and
+     after executing the makefile.  This may be useful for tracking
+     down errors from complicated nests of recursive `make' commands.
+     *Note Recursive Use of `make': Recursion.  (In practice, you
+     rarely need to specify this option since `make' does it for you;
+     see *note The `--print-directory' Option: -w Option.)
+
+`--no-print-directory'
+     Disable printing of the working directory under `-w'.  This option
+     is useful when `-w' is turned on automatically, but you do not
+     want to see the extra messages.  *Note The `--print-directory'
+     Option: -w Option.
+
+`-W FILE'
+`--what-if=FILE'
+`--new-file=FILE'
+`--assume-new=FILE'
+     Pretend that the target FILE has just been modified.  When used
+     with the `-n' flag, this shows you what would happen if you were
+     to modify that file.  Without `-n', it is almost the same as
+     running a `touch' command on the given file before running `make',
+     except that the modification time is changed only in the
+     imagination of `make'.  *Note Instead of Executing Recipes:
+     Instead of Execution.
+
+`--warn-undefined-variables'
+     Issue a warning message whenever `make' sees a reference to an
+     undefined variable.  This can be helpful when you are trying to
+     debug makefiles which use variables in complex ways.
+
+
+File: make.info,  Node: Implicit Rules,  Next: Archives,  Prev: Running,  Up: Top
+
+10 Using Implicit Rules
+***********************
+
+Certain standard ways of remaking target files are used very often.  For
+example, one customary way to make an object file is from a C source
+file using the C compiler, `cc'.
+
+   "Implicit rules" tell `make' how to use customary techniques so that
+you do not have to specify them in detail when you want to use them.
+For example, there is an implicit rule for C compilation.  File names
+determine which implicit rules are run.  For example, C compilation
+typically takes a `.c' file and makes a `.o' file.  So `make' applies
+the implicit rule for C compilation when it sees this combination of
+file name endings.
+
+   A chain of implicit rules can apply in sequence; for example, `make'
+will remake a `.o' file from a `.y' file by way of a `.c' file.
+
+   The built-in implicit rules use several variables in their recipes so
+that, by changing the values of the variables, you can change the way
+the implicit rule works.  For example, the variable `CFLAGS' controls
+the flags given to the C compiler by the implicit rule for C
+compilation.
+
+   You can define your own implicit rules by writing "pattern rules".
+
+   "Suffix rules" are a more limited way to define implicit rules.
+Pattern rules are more general and clearer, but suffix rules are
+retained for compatibility.
+
+* Menu:
+
+* Using Implicit::              How to use an existing implicit rule
+                                  to get the recipes for updating a file.
+* Catalogue of Rules::          A list of built-in rules.
+* Implicit Variables::          How to change what predefined rules do.
+* Chained Rules::               How to use a chain of implicit rules.
+* Pattern Rules::               How to define new implicit rules.
+* Last Resort::                 How to define a recipe for rules which
+                                  cannot find any.
+* Suffix Rules::                The old-fashioned style of implicit rule.
+* Implicit Rule Search::        The precise algorithm for applying
+                                  implicit rules.
+
+
+File: make.info,  Node: Using Implicit,  Next: Catalogue of Rules,  Prev: Implicit Rules,  Up: Implicit Rules
+
+10.1 Using Implicit Rules
+=========================
+
+To allow `make' to find a customary method for updating a target file,
+all you have to do is refrain from specifying recipes yourself.  Either
+write a rule with no recipe, or don't write a rule at all.  Then `make'
+will figure out which implicit rule to use based on which kind of
+source file exists or can be made.
+
+   For example, suppose the makefile looks like this:
+
+     foo : foo.o bar.o
+             cc -o foo foo.o bar.o $(CFLAGS) $(LDFLAGS)
+
+Because you mention `foo.o' but do not give a rule for it, `make' will
+automatically look for an implicit rule that tells how to update it.
+This happens whether or not the file `foo.o' currently exists.
+
+   If an implicit rule is found, it can supply both a recipe and one or
+more prerequisites (the source files).  You would want to write a rule
+for `foo.o' with no recipe if you need to specify additional
+prerequisites, such as header files, that the implicit rule cannot
+supply.
+
+   Each implicit rule has a target pattern and prerequisite patterns.
+There may be many implicit rules with the same target pattern.  For
+example, numerous rules make `.o' files: one, from a `.c' file with the
+C compiler; another, from a `.p' file with the Pascal compiler; and so
+on.  The rule that actually applies is the one whose prerequisites
+exist or can be made.  So, if you have a file `foo.c', `make' will run
+the C compiler; otherwise, if you have a file `foo.p', `make' will run
+the Pascal compiler; and so on.
+
+   Of course, when you write the makefile, you know which implicit rule
+you want `make' to use, and you know it will choose that one because you
+know which possible prerequisite files are supposed to exist.  *Note
+Catalogue of Built-In Rules: Catalogue of Rules, for a catalogue of all
+the predefined implicit rules.
+
+   Above, we said an implicit rule applies if the required
+prerequisites "exist or can be made".  A file "can be made" if it is
+mentioned explicitly in the makefile as a target or a prerequisite, or
+if an implicit rule can be recursively found for how to make it.  When
+an implicit prerequisite is the result of another implicit rule, we say
+that "chaining" is occurring.  *Note Chains of Implicit Rules: Chained
+Rules.
+
+   In general, `make' searches for an implicit rule for each target, and
+for each double-colon rule, that has no recipe.  A file that is
+mentioned only as a prerequisite is considered a target whose rule
+specifies nothing, so implicit rule search happens for it.  *Note
+Implicit Rule Search Algorithm: Implicit Rule Search, for the details
+of how the search is done.
+
+   Note that explicit prerequisites do not influence implicit rule
+search.  For example, consider this explicit rule:
+
+     foo.o: foo.p
+
+The prerequisite on `foo.p' does not necessarily mean that `make' will
+remake `foo.o' according to the implicit rule to make an object file, a
+`.o' file, from a Pascal source file, a `.p' file.  For example, if
+`foo.c' also exists, the implicit rule to make an object file from a C
+source file is used instead, because it appears before the Pascal rule
+in the list of predefined implicit rules (*note Catalogue of Built-In
+Rules: Catalogue of Rules.).
+
+   If you do not want an implicit rule to be used for a target that has
+no recipe, you can give that target an empty recipe by writing a
+semicolon (*note Defining Empty Recipes: Empty Recipes.).
+
+
 File: make.info,  Node: Catalogue of Rules,  Next: Implicit Variables,  Prev: Using Implicit,  Up: Implicit Rules
 
-10.2 Catalogue of Implicit Rules
+10.2 Catalogue of Built-In Rules
 ================================
 
 Here is a catalogue of predefined implicit rules which are always
@@ -278,7 +688,7 @@ To see the complete list of predefined variables for your instance of
 GNU `make' you can run `make -p' in a directory with no makefiles.
 
    Here is a table of some of the more common variables used as names of
-programs in built-in rules: makefiles.
+programs in built-in rules:
 
 `AR'
      Archive-maintaining program; default `ar'.  
@@ -381,7 +791,14 @@ empty string, unless otherwise noted.
 
 `LDFLAGS'
      Extra flags to give to compilers when they are supposed to invoke
-     the linker, `ld'.
+     the linker, `ld', such as `-L'.  Libraries (`-lfoo') should be
+     added to the `LDLIBS' variable instead.
+
+`LDLIBS'
+     Library flags or names given to compilers when they are supposed to
+     invoke the linker, `ld'.  `LOADLIBES' is a deprecated (but still
+     supported) alternative to `LDLIBS'.  Non-library linker flags,
+     such as `-L', should go in the `LDFLAGS' variable.
 
 `LFLAGS'
      Extra flags to give to Lex.
@@ -503,7 +920,7 @@ for Transforming Text: Functions.
 * Pattern Intro::               An introduction to pattern rules.
 * Pattern Examples::            Examples of pattern rules.
 * Automatic Variables::         How to use automatic variables in the
-                                  recipes of implicit rules.
+                                  recipe of implicit rules.
 * Pattern Match::               How patterns match.
 * Match-Anything Rules::        Precautions you should take prior to
                                   defining rules that can match any
@@ -588,7 +1005,7 @@ the target file and the source file in each case where the rule applies
              $(CO) $(COFLAGS) $<
 
 defines a rule that can make any file `X' whatsoever from a
-corresponding file `X,v' in the subdirectory `RCS'.  Since the target
+corresponding file `X,v' in the sub-directory `RCS'.  Since the target
 is `%', this rule will apply to any file whatever, provided the
 appropriate prerequisite file exists.  The double colon makes the rule
 "terminal", which means that its prerequisite may not be an intermediate
@@ -888,26 +1305,27 @@ remade from any other files; therefore, `make' can save time by not
 looking for ways to remake them.
 
    If you do not mark the match-anything rule as terminal, then it is
-nonterminal.  A nonterminal match-anything rule cannot apply to a file
-name that indicates a specific type of data.  A file name indicates a
-specific type of data if some non-match-anything implicit rule target
-matches it.
+non-terminal.  A non-terminal match-anything rule cannot apply to a
+file name that indicates a specific type of data.  A file name
+indicates a specific type of data if some non-match-anything implicit
+rule target matches it.
 
    For example, the file name `foo.c' matches the target for the pattern
 rule `%.c : %.y' (the rule to run Yacc).  Regardless of whether this
 rule is actually applicable (which happens only if there is a file
 `foo.y'), the fact that its target matches is enough to prevent
-consideration of any nonterminal match-anything rules for the file
+consideration of any non-terminal match-anything rules for the file
 `foo.c'.  Thus, `make' will not even consider trying to make `foo.c' as
 an executable file from `foo.c.o', `foo.c.c', `foo.c.p', etc.
 
-   The motivation for this constraint is that nonterminal match-anything
-rules are used for making files containing specific types of data (such
-as executable files) and a file name with a recognized suffix indicates
-some other specific type of data (such as a C source file).
+   The motivation for this constraint is that non-terminal
+match-anything rules are used for making files containing specific
+types of data (such as executable files) and a file name with a
+recognized suffix indicates some other specific type of data (such as a
+C source file).
 
    Special built-in dummy pattern rules are provided solely to recognize
-certain file names so that nonterminal match-anything rules will not be
+certain file names so that non-terminal match-anything rules will not be
 considered.  These dummy rules have no prerequisites and no recipes, and
 they are ignored for all other purposes.  For example, the built-in
 implicit rule
@@ -1102,7 +1520,7 @@ rule.
      against T; otherwise, against N.
 
   3. If any rule in that list is _not_ a match-anything rule, then
-     remove all nonterminal match-anything rules from the list.
+     remove all non-terminal match-anything rules from the list.
 
   4. Remove from the list all rules with no recipe.
 
@@ -1155,12 +1573,12 @@ variables are set corresponding to the target and prerequisites.  *Note
 Automatic Variables::.
 
 
-File: make.info,  Node: Archives,  Next: Features,  Prev: Implicit Rules,  Up: Top
+File: make.info,  Node: Archives,  Next: Extending make,  Prev: Implicit Rules,  Up: Top
 
 11 Using `make' to Update Archive Files
 ***************************************
 
-"Archive files" are files containing named subfiles called "members";
+"Archive files" are files containing named sub-files called "members";
 they are maintained with the program `ar' and their main use is as
 subroutine libraries for linking.
 
@@ -1351,9 +1769,586 @@ the normal way (*note Suffix Rules::).  Thus a double-suffix rule
 `.X.a' produces two pattern rules: `(%.o): %.X' and `%.a: %.X'.
 
 
-File: make.info,  Node: Features,  Next: Missing,  Prev: Archives,  Up: Top
+File: make.info,  Node: Extending make,  Next: Features,  Prev: Archives,  Up: Top
 
-12 Features of GNU `make'
+12 Extending GNU `make'
+***********************
+
+GNU `make' provides many advanced capabilities, including many useful
+functions.  However, it does not contain a complete programming
+language and so it has limitations.  Sometimes these limitations can be
+overcome through use of the `shell' function to invoke a separate
+program, although this can be inefficient.
+
+   In cases where the built-in capabilities of GNU `make' are
+insufficient to your requirements there are two options for extending
+`make'.  On systems where it's provided, you can utilize GNU Guile as
+an embedded scripting language (*note GNU Guile Integration: Guile
+Integration.).  On systems which support dynamically loadable objects,
+you can write your own extension in any language (which can be compiled
+into such an object) and load it to provide extended capabilities
+(*note The `load' Directive: load Directive.).
+
+* Menu:
+
+* Guile Integration::           Using Guile as an embedded scripting language.
+* Loading Objects::             Loading dynamic objects as extensions.
+
+
+File: make.info,  Node: Guile Integration,  Next: Loading Objects,  Prev: Extending make,  Up: Extending make
+
+12.1 GNU Guile Integration
+==========================
+
+GNU `make' may be built with support for GNU Guile as an embedded
+extension language.  Guile implements the Scheme language.  A review of
+GNU Guile and the Scheme language and its features is beyond the scope
+of this manual: see the documentation for GNU Guile and Scheme.
+
+   You can determine if `make' contains support for Guile by examining
+the `.FEATURES' variable; it will contain the word GUILE if Guile
+support is available.
+
+   The Guile integration provides one new `make' function: `guile'.
+The `guile' function takes one argument which is first expanded by
+`make' in the normal fashion, then passed to the GNU Guile evaluator.
+The result of the evaluator is converted into a string and used as the
+expansion of the `guile' function in the makefile.
+
+   In addition, GNU `make' exposes Guile procedures for use in Guile
+scripts.
+
+* Menu:
+
+* Guile Types::                 Converting Guile types to `make' strings.
+* Guile Interface::             Invoking `make' functions from Guile.
+* Guile Example::               Example using Guile in `make'.
+
+
+File: make.info,  Node: Guile Types,  Next: Guile Interface,  Prev: Guile Integration,  Up: Guile Integration
+
+12.1.1 Conversion of Guile Types
+--------------------------------
+
+There is only one "data type" in `make': a string.  GNU Guile, on the
+other hand, provides a rich variety of different data types.  An
+important aspect of the interface between `make' and GNU Guile is the
+conversion of Guile data types into `make' strings.
+
+   This conversion is relevant in two places: when a makefile invokes
+the `guile' function to evaluate a Guile expression, the result of that
+evaluation must be converted into a make string so it can be further
+evaluated by `make'.  And secondly, when a Guile script invokes one of
+the procedures exported by `make' the argument provided to the
+procedure must be converted into a string.
+
+   The conversion of Guile types into `make' strings is as below:
+
+`#f'
+     False is converted into the empty string: in `make' conditionals
+     the empty string is considered false.
+
+`#t'
+     True is converted to the string `#t': in `make' conditionals any
+     non-empty string is considered true.
+
+`symbol'
+
+`number'
+     A symbol or number is converted into the string representation of
+     that symbol or number.
+
+`character'
+     A printable character is converted to the same character.
+
+`string'
+     A string containing only printable characters is converted to the
+     same string.
+
+`list'
+     A list is converted recursively according to the above rules.  This
+     implies that any structured list will be flattened (that is, a
+     result of `'(a b (c d) e)' will be converted to the `make' string
+     `a b c d e').
+
+`other'
+     Any other Guile type results in an error.  In future versions of
+     `make', other Guile types may be converted.
+
+
+   The translation of `#f' (to the empty string) and `#t' (to the
+non-empty string `#t') is designed to allow you to use Guile boolean
+results directly as `make' boolean conditions.  For example:
+
+     $(if $(guile (access? "myfile" R_OK)),$(info myfile exists))
+
+   As a consequence of these conversion rules you must consider the
+result of your Guile script, as that result will be converted into a
+string and parsed by `make'.  If there is no natural result for the
+script (that is, the script exists solely for its side-effects), you
+should add `#f' as the final expression in order to avoid syntax errors
+in your makefile.
+
+
+File: make.info,  Node: Guile Interface,  Next: Guile Example,  Prev: Guile Types,  Up: Guile Integration
+
+12.1.2 Interfaces from Guile to `make'
+--------------------------------------
+
+In addition to the `guile' function available in makefiles, `make'
+exposes some procedures for use in your Guile scripts.  At startup
+`make' creates a new Guile module, `gnu make', and exports these
+procedures as public interfaces from that module:
+
+`gmk-expand'
+     This procedure takes a single argument which is converted into a
+     string.  The string is expanded by `make' using normal `make'
+     expansion rules.  The result of the expansion is converted into a
+     Guile string and provided as the result of the procedure.
+
+`gmk-eval'
+     This procedure takes a single argument which is converted into a
+     string.  The string is evaluated by `make' as if it were a
+     makefile.  This is the same capability available via the `eval'
+     function (*note Eval Function::).  The result of the `gmk-eval'
+     procedure is always the empty string.
+
+     Note that `gmk-eval' is not quite the same as using `gmk-expand'
+     with the `eval' function: in the latter case the evaluated string
+     will be expanded _twice_; first by `gmk-expand', then again by the
+     `eval' function.
+
+
+
+File: make.info,  Node: Guile Example,  Prev: Guile Interface,  Up: Guile Integration
+
+12.1.3 Example Using Guile in `make'
+------------------------------------
+
+Here is a very simple example using GNU Guile to manage writing to a
+file.  These Guile procedures simply open a file, allow writing to the
+file (one string per line), and close the file.  Note that because we
+cannot store complex values such as Guile ports in `make' variables,
+we'll keep the port as a global variable in the Guile interpreter.
+
+   You can create Guile functions easily using `define'/`endef' to
+create a Guile script, then use the `guile' function to internalize it:
+
+     define GUILEIO
+     ;; A simple Guile IO library for GNU make
+
+     (define MKPORT #f)
+
+     (define (mkopen name mode)
+       (set! MKPORT (open-file name mode))
+       #f)
+
+     (define (mkwrite s)
+       (display s MKPORT)
+       (newline MKPORT)
+       #f)
+
+     (define (mkclose)
+       (close-port MKPORT)
+       #f)
+
+     #f
+     endef
+
+     # Internalize the Guile IO functions
+     $(guile $(GUILEIO))
+
+   If you have a significant amount of Guile support code, you might
+consider keeping it in a different file (e.g., `guileio.scm') and then
+loading it in your makefile using the `guile' function:
+
+     $(guile (load "guileio.scm"))
+
+   An advantage to this method is that when editing `guileio.scm', your
+editor will understand that this file contains Scheme syntax rather
+than makefile syntax.
+
+   Now you can use these Guile functions to create files.  Suppose you
+need to operate on a very large list, which cannot fit on the command
+line, but the utility you're using accepts the list as input as well:
+
+     prog: $(PREREQS)
+             @$(guile (mkopen "tmp.out" "w")) \
+              $(foreach X,$^,$(guile (mkwrite "$(X)"))) \
+              $(guile (mkclose))
+             $(LINK) < tmp.out
+
+   A more comprehensive suite of file manipulation procedures is
+possible of course.  You could, for example, maintain multiple output
+files at the same time by choosing a symbol for each one and using it
+as the key to a hash table, where the value is a port, then returning
+the symbol to be stored in a `make' variable.
+
+
+File: make.info,  Node: Loading Objects,  Prev: Guile Integration,  Up: Extending make
+
+12.2 Loading Dynamic Objects
+============================
+
+     Warning: The `load' directive and extension capability is
+     considered a "technology preview" in this release of GNU make.  We
+     encourage you to experiment with this feature and we appreciate
+     any feedback on it.  However we cannot guarantee to maintain
+     backward-compatibility in the next release.  Consider using GNU
+     Guile instead for extending GNU make (*note The `guile' Function:
+     Guile Function.).
+
+Many operating systems provide a facility for dynamically loading
+compiled objects.  If your system provides this facility, GNU `make'
+can make use of it to load dynamic objects at runtime, providing new
+capabilities which may then be invoked by your makefile.
+
+   The `load' directive is used to load a dynamic object.  Once the
+object is loaded, a "setup" function will be invoked to allow the
+object to initialize itself and register new facilities with GNU
+`make'.  A dynamic object might include new `make' functions, for
+example, and the "setup" function would register them with GNU `make''s
+function handling system.
+
+* Menu:
+
+* load Directive::              Loading dynamic objects as extensions.
+* Remaking Loaded Objects::     How loaded objects get remade.
+* Loaded Object API::           Programmatic interface for loaded objects.
+* Loaded Object Example::       Example of a loaded object
+
+
+File: make.info,  Node: load Directive,  Next: Remaking Loaded Objects,  Prev: Loading Objects,  Up: Loading Objects
+
+12.2.1 The `load' Directive
+---------------------------
+
+Objects are loaded into GNU `make' by placing the `load' directive into
+your makefile.  The syntax of the `load' directive is as follows:
+
+     load OBJECT-FILE ...
+
+   or:
+
+     load OBJECT-FILE(SYMBOL-NAME) ...
+
+   The file OBJECT-FILE is dynamically loaded by GNU `make'.  If
+OBJECT-FILE does not include a directory path then it is first looked
+for in the current directory.  If it is not found there, or a directory
+path is included, then system-specific paths will be searched.  If the
+load fails for any reason, `make' will print a message and exit.
+
+   If the load succeeds `make' will invoke an initializing function.
+
+   If SYMBOL-NAME is provided, it will be used as the name of the
+initializing function.
+
+   If no SYMBOL-NAME is provided, the initializing function name is
+created by taking the base file name of OBJECT-FILE, up to the first
+character which is not a valid symbol name character (alphanumerics and
+underscores are valid symbol name characters).  To this prefix will be
+appended the suffix `_gmk_setup'.
+
+   More than one object file may be loaded with a single `load'
+directive, and both forms of `load' arguments may be used in the same
+directive.
+
+   The initializing function will be provided the file name and line
+number of the invocation of the `load' operation.  It should return a
+value of type `int', which must be `0' on failure and non-`0' on
+success.  If the return value is `-1', then GNU make will _not_ attempt
+to rebuild the object file (*note How Loaded Objects Are Remade:
+Remaking Loaded Objects.).
+
+   For example:
+
+     load ../mk_funcs.so
+
+   will load the dynamic object `../mk_funcs.so'.  After the object is
+loaded, `make' will invoke the function (assumed to be defined by the
+shared object) `mk_funcs_gmk_setup'.
+
+   On the other hand:
+
+     load ../mk_funcs.so(init_mk_func)
+
+   will load the dynamic object `../mk_funcs.so'.  After the object is
+loaded, `make' will invoke the function `init_mk_func'.
+
+   Regardless of how many times an object file appears in a `load'
+directive, it will only be loaded (and its setup function will only be
+invoked) once.
+
+   After an object has been successfully loaded, its file name is
+appended to the `.LOADED' variable.
+
+   If you would prefer that failure to load a dynamic object not be
+reported as an error, you can use the `-load' directive instead of
+`load'.  GNU `make' will not fail and no message will be generated if
+an object fails to load.  The failed object is not added to the
+`.LOADED' variable, which can then be consulted to determine if the
+load was successful.
+
+
+File: make.info,  Node: Remaking Loaded Objects,  Next: Loaded Object API,  Prev: load Directive,  Up: Loading Objects
+
+12.2.2 How Loaded Objects Are Remade
+------------------------------------
+
+Loaded objects undergo the same re-make procedure as makefiles (*note
+How Makefiles Are Remade: Remaking Makefiles.).  If any loaded object
+is recreated, then `make' will start from scratch and re-read all the
+makefiles, and reload the object files again.  It is not necessary for
+the loaded object to do anything special to support this.
+
+   It's up to the makefile author to provide the rules needed for
+rebuilding the loaded object.
+
+
+File: make.info,  Node: Loaded Object API,  Next: Loaded Object Example,  Prev: Remaking Loaded Objects,  Up: Loading Objects
+
+12.2.3 Loaded Object Interface
+------------------------------
+
+     Warning: For this feature to be useful your extensions will need
+     to invoke various functions internal to GNU `make'.  The
+     programming interfaces provided in this release should not be
+     considered stable: functions may be added, removed, or change
+     calling signatures or implementations in future versions of GNU
+     `make'.
+
+To be useful, loaded objects must be able to interact with GNU `make'.
+This interaction includes both interfaces the loaded object provides to
+makefiles and also interfaces `make' provides to the loaded object to
+manipulate `make''s operation.
+
+   The interface between loaded objects and `make' is defined by the
+`gnumake.h' C header file.  All loaded objects written in C should
+include this header file.  Any loaded object not written in C will need
+to implement the interface defined in this header file.
+
+   Typically, a loaded object will register one or more new GNU `make'
+functions using the `gmk_add_function' routine from within its setup
+function.  The implementations of these `make' functions may make use
+of the `gmk_expand' and `gmk_eval' routines to perform their tasks,
+then optionally return a string as the result of the function expansion.
+
+Loaded Object Licensing
+.......................
+
+Every dynamic extension should define the global symbol
+`plugin_is_GPL_compatible' to assert that it has been licensed under a
+GPL-compatible license.  If this symbol does not exist, `make' emits a
+fatal error and exits when it tries to load your extension.
+
+   The declared type of the symbol should be `int'. It does not need to
+be in any allocated section, though.  The code merely asserts that the
+symbol exists in the global scope. Something like this is enough:
+
+     int plugin_is_GPL_compatible;
+
+Data Structures
+...............
+
+`gmk_floc'
+     This structure represents a filename/location pair.  It is provided
+     when defining items, so GNU `make' can inform the user later where
+     the definition occurred if necessary.
+
+Registering Functions
+.....................
+
+There is currently one way for makefiles to invoke operations provided
+by the loaded object: through the `make' function call interface.  A
+loaded object can register one or more new functions which may then be
+invoked from within the makefile in the same way as any other function.
+
+   Use `gmk_add_function' to create a new `make' function.  Its
+arguments are as follows:
+
+`name'
+     The function name.  This is what the makefile should use to invoke
+     the function.  The name must be between 1 and 255 characters long
+     and it may only contain alphanumeric, period (`.'), dash (`-'), and
+     underscore (`_') characters.  It may not begin with a period.
+
+`func_ptr'
+     A pointer to a function that `make' will invoke when it expands
+     the function in a makefile.  This function must be defined by the
+     loaded object.
+
+`min_args'
+     The minimum number of arguments the function will accept.  Must be
+     between 0 and 255.  GNU `make' will check this and fail before
+     invoking `func_ptr' if the function was invoked with too few
+     arguments.
+
+`max_args'
+     The maximum number of arguments the function will accept.  Must be
+     between 0 and 255.  GNU `make' will check this and fail before
+     invoking `func_ptr' if the function was invoked with too few
+     arguments.  If the value is 0, then any number of arguments is
+     accepted.  If the value is greater than 0, then it must be greater
+     than or equal to `min_args'.
+
+`flags'
+     Flags that specify how this function will operate; the desired
+     flags should be OR'd together.  If the `GMK_FUNC_NOEXPAND' flag is
+     given then the function arguments will not be expanded before the
+     function is called; otherwise they will be expanded first.
+
+Registered Function Interface
+.............................
+
+A function registered with `make' must match the `gmk_func_ptr' type.
+It will be invoked with three parameters: `name' (the name of the
+function), `argc' (the number of arguments to the function), and `argv'
+(an array of pointers to arguments to the function).  The last pointer
+(that is, `argv[argc]') will be null (`0').
+
+   The return value of the function is the result of expanding the
+function.  If the function expands to nothing the return value may be
+null.  Otherwise, it must be a pointer to a string created with
+`gmk_alloc'.  Once the function returns, `make' owns this string and
+will free it when appropriate; it cannot be accessed by the loaded
+object.
+
+GNU `make' Facilities
+.....................
+
+There are some facilities exported by GNU `make' for use by loaded
+objects.  Typically these would be run from within the setup function
+and/or the functions registered via `gmk_add_function', to retrieve or
+modify the data `make' works with.
+
+`gmk_expand'
+     This function takes a string and expands it using `make' expansion
+     rules.  The result of the expansion is returned in a
+     nil-terminated string buffer.  The caller is responsible for
+     calling `gmk_free' with a pointer to the returned buffer when done.
+
+`gmk_eval'
+     This function takes a buffer and evaluates it as a segment of
+     makefile syntax.  This function can be used to define new
+     variables, new rules, etc.  It is equivalent to using the `eval'
+     `make' function.
+
+   Note that there is a difference between `gmk_eval' and calling
+`gmk_expand' with a string using the `eval' function: in the latter
+case the string will be expanded _twice_; once by `gmk_expand' and then
+again by the `eval' function.  Using `gmk_eval' the buffer is only
+expanded once, at most (as it's read by the `make' parser).
+
+Memory Management
+.................
+
+Some systems allow for different memory management schemes.  Thus you
+should never pass memory that you've allocated directly to any `make'
+function, nor should you attempt to directly free any memory returned
+to you by any `make' function.  Instead, use the `gmk_alloc' and
+`gmk_free' functions.
+
+   In particular, the string returned to `make' by a function
+registered using `gmk_add_function' _must_ be allocated using
+`gmk_alloc', and the string returned from the `make' `gmk_expand'
+function _must_ be freed (when no longer needed) using `gmk_free'.
+
+`gmk_alloc'
+     Return a pointer to a newly-allocated buffer.  This function will
+     always return a valid pointer; if not enough memory is available
+     `make' will exit.
+
+`gmk_free'
+     Free a buffer returned to you by `make'.  Once the `gmk_free'
+     function returns the string will no longer be valid.
+
+
+File: make.info,  Node: Loaded Object Example,  Prev: Loaded Object API,  Up: Loading Objects
+
+12.2.4 Example Loaded Object
+----------------------------
+
+Let's suppose we wanted to write a new GNU `make' function that would
+create a temporary file and return its name.  We would like our
+function to take a prefix as an argument.  First we can write the
+function in a file `mk_temp.c':
+
+     #include <stdlib.h>
+     #include <stdlib.h>
+     #include <stdio.h>
+     #include <string.h>
+     #include <unistd.h>
+     #include <errno.h>
+
+     #include <gnumake.h>
+
+     int plugin_is_GPL_compatible;
+
+     char *
+     gen_tmpfile(const char *nm, int argc, char **argv)
+     {
+       int fd;
+
+       /* Compute the size of the filename and allocate space for it.  */
+       int len = strlen (argv[0]) + 6 + 1;
+       char *buf = gmk_alloc (len);
+
+       strcpy (buf, argv[0]);
+       strcat (buf, "XXXXXX");
+
+       fd = mkstemp(buf);
+       if (fd >= 0)
+         {
+           /* Don't leak the file descriptor.  */
+           close (fd);
+           return buf;
+         }
+
+       /* Failure.  */
+       fprintf (stderr, "mkstemp(%s) failed: %s\n", buf, strerror (errno));
+       gmk_free (buf);
+       return NULL;
+     }
+
+     int
+     mk_temp_gmk_setup ()
+     {
+       /* Register the function with make name "mk-temp".  */
+       gmk_add_function ("mk-temp", gen_tmpfile, 1, 1, 1);
+       return 1;
+     }
+
+   Next, we will write a makefile that can build this shared object,
+load it, and use it:
+
+     all:
+             @echo Temporary file: $(mk-temp tmpfile.)
+
+     load mk_temp.so
+
+     mk_temp.so: mk_temp.c
+             $(CC) -shared -fPIC -o $ $<
+
+   On MS-Windows, due to peculiarities of how shared objects are
+produced, the compiler needs to scan the "import library" produced when
+building `make', typically called `libgnumake-VERSION.dll.a', where
+VERSION is the version of the load object API.  So the recipe to
+produce a shared object will look on Windows like this (assuming the
+API version is 1):
+
+     mk_temp.dll: mk_temp.c
+             $(CC) -shared -o $ $< -lgnumake-1
+
+   Now when you run `make' you'll see something like:
+
+     $ make
+     cc -shared -fPIC -o mk_temp.so mk_temp.c
+     Temporary filename: tmpfile.A7JEwd
+
+
+File: make.info,  Node: Features,  Next: Missing,  Prev: Extending make,  Up: Top
+
+13 Features of GNU `make'
 *************************
 
 Here is a summary of the features of GNU `make', for comparison with
@@ -1404,7 +2399,7 @@ listed here, nor the ones in *note Missing::.
      Chained Rules.) allows one pattern rule for installing members in
      an archive (*note Archive Update::) to be sufficient.
 
-   * The arrangement of lines and backslash-newline combinations in
+   * The arrangement of lines and backslash/newline combinations in
      recipes is retained when the recipes are printed, so they appear as
      they do in the makefile, except for the stripping of initial
      whitespace.
@@ -1440,6 +2435,10 @@ which others.
      System V or BSD implementations.  *Note Recipe Execution:
      Execution.
 
+   * A number of different build tools that support parallelism also
+     support collecting output and displaying as a single block.  *Note
+     Output During Parallel Execution: Parallel Output.
+
    * Modified variable references using pattern substitution come from
      SunOS 4.  *Note Basics of Variable References: Reference.  This
      functionality was provided in GNU `make' by the `patsubst'
@@ -1464,6 +2463,15 @@ which others.
      `make' does not allow multiple makefiles to be specified in one
      `-include' directive.)  The same feature appears with the name
      `sinclude' in SGI `make' and perhaps others.
+
+   * The `!=' shell assignment operator exists in many BSD of `make'
+     and is purposefully implemented here to behave identically to
+     those implementations.
+
+   * Various build management tools are implemented using scripting
+     languages such as Perl or Python and thus provide a natural
+     embedded scripting language, similar to GNU `make''s integration
+     of GNU Guile.
 
    The remaining features are inventions new in GNU `make':
 
@@ -1543,16 +2551,16 @@ which others.
      Makefiles.  System V `make' has a very, very limited form of this
      functionality in that it will check out SCCS files for makefiles.
 
-   * Various new built-in implicit rules.  *Note Catalogue of Implicit
+   * Various new built-in implicit rules.  *Note Catalogue of Built-In
      Rules: Catalogue of Rules.
 
-   * The built-in variable `MAKE_VERSION' gives the version number of
-     `make'.  
+   * Load dynamic objects which can modify the behavior of `make'.
+     *Note Loading Dynamic Objects: Loading Objects.
 
 
 File: make.info,  Node: Missing,  Next: Makefile Conventions,  Prev: Features,  Up: Top
 
-13 Incompatibilities and Missing Features
+14 Incompatibilities and Missing Features
 *****************************************
 
 The `make' programs in various other systems support a few features
@@ -1565,7 +2573,7 @@ these features.
      being an object file which defines the linker symbol ENTRY.
 
      This feature was not put into GNU `make' because of the
-     nonmodularity of putting knowledge into `make' of the internal
+     non-modularity of putting knowledge into `make' of the internal
      format of archive file symbol tables.  *Note Updating Archive
      Symbol Directories: Archive Symbols.
 
@@ -1637,7 +2645,7 @@ these features.
 
 File: make.info,  Node: Makefile Conventions,  Next: Quick Reference,  Prev: Missing,  Up: Top
 
-14 Makefile Conventions
+15 Makefile Conventions
 ***********************
 
 This node describes conventions for writing the Makefiles for GNU
@@ -1659,7 +2667,7 @@ POSIX and *note Portable Make Programming: (autoconf)Portable Make.
 
 File: make.info,  Node: Makefile Basics,  Next: Utilities in Makefiles,  Up: Makefile Conventions
 
-14.1 General Conventions for Makefiles
+15.1 General Conventions for Makefiles
 ======================================
 
 Every Makefile should contain this line:
@@ -1739,7 +2747,7 @@ their subtargets) work correctly with a parallel `make'.
 
 File: make.info,  Node: Utilities in Makefiles,  Next: Command Variables,  Prev: Makefile Basics,  Up: Makefile Conventions
 
-14.2 Utilities in Makefiles
+15.2 Utilities in Makefiles
 ===========================
 
 Write the Makefile commands (and any shell scripts, such as
@@ -1799,7 +2807,7 @@ exist.
 
 File: make.info,  Node: Command Variables,  Next: DESTDIR,  Prev: Utilities in Makefiles,  Up: Makefile Conventions
 
-14.3 Variables for Specifying Commands
+15.3 Variables for Specifying Commands
 ======================================
 
 Makefiles should provide variables for overriding certain commands,
@@ -1873,7 +2881,7 @@ command, with the final argument being a directory, as in:
 
 File: make.info,  Node: DESTDIR,  Next: Directory Variables,  Prev: Command Variables,  Up: Makefile Conventions
 
-14.4 `DESTDIR': Support for Staged Installs
+15.4 `DESTDIR': Support for Staged Installs
 ===========================================
 
 `DESTDIR' is a variable prepended to each installed target file, like
@@ -1922,7 +2930,7 @@ though it is not an absolute requirement.
 
 File: make.info,  Node: Directory Variables,  Next: Standard Targets,  Prev: DESTDIR,  Up: Makefile Conventions
 
-14.5 Variables for Installation Directories
+15.5 Variables for Installation Directories
 ===========================================
 
 Installation directories should always be named by variables, so it is
@@ -2073,6 +3081,19 @@ to put these various kinds of files in:
      it as `$(prefix)/var'.  (If you are using Autoconf, write it as
      `@localstatedir@'.)
 
+`runstatedir'
+     The directory for installing data files which the programs modify
+     while they run, that pertain to one specific machine, and which
+     need not persist longer than the execution of the program--which is
+     generally long-lived, for example, until the next reboot.  PID
+     files for system daemons are a typical use.  In addition, this
+     directory should not be cleaned except perhaps at reboot, while
+     the general `/tmp' (`TMPDIR') may be cleaned arbitrarily.  This
+     should normally be `/var/run', but write it as
+     `$(localstatedir)/run'.  Having it as a separate variable allows
+     the use of `/run' if desired, for example.  (If you are using
+     Autoconf 2.70 or later, write it as `@runstatedir@'.)
+
    These variables specify the directory for installing certain specific
 types of files, if your program has them.  Every GNU package should
 have Info files, so every program needs `infodir', but not all need
@@ -2154,7 +3175,7 @@ have Info files, so every program needs `infodir', but not all need
 
      If you are using Autoconf, write the default as `@lispdir@'.  In
      order to make `@lispdir@' work, you need the following lines in
-     your `configure.in' file:
+     your `configure.ac' file:
 
           lispdir='${datarootdir}/emacs/site-lisp'
           AC_SUBST(lispdir)
@@ -2218,7 +3239,7 @@ have Info files, so every program needs `infodir', but not all need
      datarootdir = $(prefix)/share
      datadir = $(datarootdir)
      exec_prefix = $(prefix)
-     # Where to put the executable for the command `gcc'.
+     # Where to put the executable for the command 'gcc'.
      bindir = $(exec_prefix)/bin
      # Where to put the directories used by the compiler.
      libexecdir = $(exec_prefix)/libexec
@@ -2248,7 +3269,7 @@ supports them.
 
 File: make.info,  Node: Standard Targets,  Next: Install Command Categories,  Prev: Directory Variables,  Up: Makefile Conventions
 
-14.6 Standard Targets for Users
+15.6 Standard Targets for Users
 ===============================
 
 All GNU programs should have the following targets in their Makefiles:
@@ -2261,8 +3282,9 @@ All GNU programs should have the following targets in their Makefiles:
      asked for.
 
      By default, the Make rules should compile and link with `-g', so
-     that executable programs have debugging symbols.  Users who don't
-     mind being helpless can strip the executables later if they wish.
+     that executable programs have debugging symbols.  Otherwise, you
+     are essentially helpless in the face of a crash, and it is often
+     far from easy to reproduce with a fresh build.
 
 `install'
      Compile the program and copy the executables, libraries, and so on
@@ -2270,8 +3292,11 @@ All GNU programs should have the following targets in their Makefiles:
      there is a simple test to verify that a program is properly
      installed, this target should run that test.
 
-     Do not strip executables when installing them.  Devil-may-care
-     users can use the `install-strip' target to do that.
+     Do not strip executables when installing them.  This helps eventual
+     debugging that may be needed later, and nowadays disk space is
+     cheap and dynamic loaders typically ensure debug sections are not
+     loaded during normal execution.  Users that need stripped binaries
+     may invoke the `install-strip' target to do that.
 
      If possible, write the `install' target rule so that it does not
      modify anything in the directory where the program was built,
@@ -2308,9 +3333,9 @@ All GNU programs should have the following targets in their Makefiles:
                   $(INSTALL_DATA) $$d/foo.info \
                     "$(DESTDIR)$(infodir)/foo.info"
           # Run install-info only if it exists.
-          # Use `if' instead of just prepending `-' to the
+          # Use 'if' instead of just prepending '-' to the
           # line so we notice real errors from install-info.
-          # Use `$(SHELL) -c' because some shells do not
+          # Use '$(SHELL) -c' because some shells do not
           # fail gracefully when there is an unknown command.
                   $(POST_INSTALL)
                   if $(SHELL) -c 'install-info --version' \
@@ -2475,10 +3500,12 @@ All GNU programs should have the following targets in their Makefiles:
           foo.dvi: foo.texi chap1.texi chap2.texi
                   $(TEXI2DVI) $(srcdir)/foo.texi
 
-     You must define the variable `TEXI2DVI' in the Makefile.  It should
-     run the program `texi2dvi', which is part of the Texinfo
-     distribution.(1)  Alternatively, write just the dependencies, and
-     allow GNU `make' to provide the command.
+     You must define the variable `TEXI2DVI' in the Makefile.  It
+     should run the program `texi2dvi', which is part of the Texinfo
+     distribution.  (`texi2dvi' uses TeX to do the real work of
+     formatting. TeX is not distributed with Texinfo.)  Alternatively,
+     write only the dependencies, and allow GNU `make' to provide the
+     command.
 
      Here's another example, this one for generating HTML from Texinfo:
 
@@ -2553,15 +3580,10 @@ programs in which they are useful.
      This rule should not modify the directories where compilation is
      done.  It should do nothing but create installation directories.
 
-   ---------- Footnotes ----------
-
-   (1) `texi2dvi' uses TeX to do the real work of formatting. TeX is
-not distributed with Texinfo.
-
 
 File: make.info,  Node: Install Command Categories,  Prev: Standard Targets,  Up: Makefile Conventions
 
-14.7 Install Command Categories
+15.7 Install Command Categories
 ===============================
 
 When writing the `install' target, you must classify all the commands
@@ -2670,7 +3692,7 @@ Appendix A Quick Reference
 
 This appendix summarizes the directives, text manipulation functions,
 and special variables which GNU `make' understands.  *Note Special
-Targets::, *note Catalogue of Implicit Rules: Catalogue of Rules, and
+Targets::, *note Catalogue of Built-In Rules: Catalogue of Rules, and
 *note Summary of Options: Options Summary, for other summaries.
 
    Here is a summary of the directives GNU `make' recognizes:
@@ -2678,6 +3700,7 @@ Targets::, *note Catalogue of Implicit Rules: Catalogue of Rules, and
 `define VARIABLE'
 `define VARIABLE ='
 `define VARIABLE :='
+`define VARIABLE ::='
 `define VARIABLE +='
 `define VARIABLE ?='
 `endef'
@@ -2903,6 +3926,11 @@ Targets::, *note Catalogue of Implicit Rules: Catalogue of Rules, and
      to the empty string.
      *Note The `eval' Function: Eval Function.
 
+`$(file OP FILENAME,TEXT)'
+     Expand the arguments, then open the file FILENAME using mode OP
+     and write TEXT to that file.
+     *Note The `file' Function: File Function.
+
 `$(value VAR)'
      Evaluates to the contents of the variable VAR, with no expansion
      performed on it.
@@ -2991,6 +4019,14 @@ Variables::, for full information.
      recipes has special meaning.  *Note How the `MAKE' Variable Works:
      MAKE Variable.
 
+`MAKE_VERSION'
+     The built-in variable `MAKE_VERSION' expands to the version number
+     of the GNU `make' program.  
+
+`MAKE_HOST'
+     The built-in variable `MAKE_HOST' expands to a string representing
+     the host that GNU `make' was built to run on.  
+
 `MAKELEVEL'
      The number of levels of recursion (sub-`make's).
      *Note Variables/Recursion::.
@@ -3004,6 +4040,16 @@ Variables::, for full information.
      line: its contents may not be quoted correctly for use in the
      shell.  Always allow recursive `make''s to obtain these values
      through the environment from its parent.
+
+`GNUMAKEFLAGS'
+     Other flags parsed by `make'.  You can set this in the environment
+     or a makefile to set `make' command-line flags.  GNU `make' never
+     sets this variable itself.  This variable is only needed if you'd
+     like to set GNU `make'-specific flags in a POSIX-compliant
+     makefile.  This variable will be seen by GNU `make' and ignored by
+     other `make' implementations.  It's not needed if you only use GNU
+     `make'; just use `MAKEFLAGS' directly.  *Note Communicating
+     Options to a Sub-`make': Options/Recursion.
 
 `MAKECMDGOALS'
      The targets given to `make' on the command line.  Setting this
@@ -3039,7 +4085,7 @@ that are fatal are prefixed with the string `***'.
 
    Error messages are all either prefixed with the name of the program
 (usually `make'), or, if the error is found in a makefile, the name of
-the file and linenumber containing the problem.
+the file and line number containing the problem.
 
    In the table below, these common prefixes are left off.
 
@@ -3051,7 +4097,7 @@ the file and linenumber containing the problem.
      exited in some other abnormal fashion (with a signal of some
      type).  *Note Errors in Recipes: Errors.
 
-     If no `***' is attached to the message, then the subprocess failed
+     If no `***' is attached to the message, then the sub-process failed
      but the rule in the makefile was prefixed with the `-' special
      character, so `make' ignored the error.
 
@@ -3094,7 +4140,7 @@ the file and linenumber containing the problem.
      If you want that file to be built, you will need to add a rule to
      your makefile describing how that target can be built.  Other
      possible sources of this problem are typos in the makefile (if
-     that filename is wrong) or a corrupted source tree (if that file
+     that file name is wrong) or a corrupted source tree (if that file
      is not supposed to be built, but rather only a prerequisite).
 
 `No targets specified and no makefile found.  Stop.'
@@ -3127,8 +4173,8 @@ the file and linenumber containing the problem.
 `Recursive variable `XXX' references itself (eventually).  Stop.'
      This means you've defined a normal (recursive) `make' variable XXX
      that, when it's expanded, will refer to itself (XXX).  This is not
-     allowed; either use simply-expanded variables (`:=') or use the
-     append operator (`+=').  *Note How to Use Variables: Using
+     allowed; either use simply-expanded variables (`:=' or `::=') or
+     use the append operator (`+=').  *Note How to Use Variables: Using
      Variables.
 
 `Unterminated variable reference.  Stop.'
@@ -3151,7 +4197,10 @@ the file and linenumber containing the problem.
      the third means the target doesn't contain a pattern character
      (`%'); and the fourth means that all three parts of the static
      pattern rule contain pattern characters (`%')-only the first two
-     parts should.  *Note Syntax of Static Pattern Rules: Static Usage.
+     parts should.  If you see these errors and you aren't trying to
+     create a static pattern rule, check the value of any variables in
+     your target and prerequisite lists to be sure they do not contain
+     colons.  *Note Syntax of Static Pattern Rules: Static Usage.
 
 `warning: -jN forced in submake: disabling jobserver mode.'
      This warning and the next are generated if `make' detects error
@@ -3185,7 +4234,8 @@ Appendix C Complex Makefile Example
 ***********************************
 
 Here is the makefile for the GNU `tar' program.  This is a moderately
-complex makefile.
+complex makefile.  The first line uses a `#!' setting to allow the
+makefile to be executed directly.
 
    Because it is the first target, the default goal is `all'.  An
 interesting feature of this makefile is that `testpad.h' is a source
@@ -3215,6 +4265,7 @@ does `make distclean' and also removes the Info files generated from
    In addition, there are targets `shar' and `dist' that create
 distribution kits.
 
+     #!/usr/bin/make -f
      # Generated automatically from Makefile.in by configure.
      # Un*x Makefile for GNU tar program.
      # Copyright (C) 1991 Free Software Foundation, Inc.
@@ -3905,6 +4956,8 @@ Index of Concepts
  [index ]
 * Menu:
 
+* !=:                                    Setting.             (line   6)
+* !=, expansion:                         Reading Makefiles.   (line  33)
 * # (comments), in makefile:             Makefile Contents.   (line  42)
 * # (comments), in recipes:              Recipe Syntax.       (line  29)
 * #include:                              Automatic Prerequisites.
@@ -3923,7 +4976,7 @@ Index of Concepts
 * * (wildcard character):                Wildcards.           (line   6)
 * +, and define:                         Canned Recipes.      (line  49)
 * +, and recipe execution:               Instead of Execution.
-                                                              (line  60)
+                                                              (line  63)
 * +, and recipes:                        MAKE Variable.       (line  18)
 * +=:                                    Appending.           (line   6)
 * +=, expansion:                         Reading Makefiles.   (line  33)
@@ -3931,91 +4984,94 @@ Index of Concepts
 * - (in recipes):                        Errors.              (line  19)
 * -, and define:                         Canned Recipes.      (line  49)
 * --always-make:                         Options Summary.     (line  15)
-* --assume-new <1>:                      Options Summary.     (line 248)
+* --assume-new <1>:                      Options Summary.     (line 276)
 * --assume-new:                          Instead of Execution.
-                                                              (line  35)
+                                                              (line  38)
 * --assume-new, and recursion:           Options/Recursion.   (line  22)
-* --assume-old <1>:                      Options Summary.     (line 154)
+* --assume-old <1>:                      Options Summary.     (line 159)
 * --assume-old:                          Avoiding Compilation.
                                                               (line   6)
 * --assume-old, and recursion:           Options/Recursion.   (line  22)
-* --check-symlink-times:                 Options Summary.     (line 136)
+* --check-symlink-times:                 Options Summary.     (line 141)
 * --debug:                               Options Summary.     (line  42)
 * --directory <1>:                       Options Summary.     (line  26)
 * --directory:                           Recursion.           (line  20)
 * --directory, and --print-directory:    -w Option.           (line  20)
 * --directory, and recursion:            Options/Recursion.   (line  22)
-* --dry-run <1>:                         Options Summary.     (line 146)
+* --dry-run <1>:                         Options Summary.     (line 151)
 * --dry-run <2>:                         Instead of Execution.
                                                               (line  14)
 * --dry-run:                             Echoing.             (line  18)
-* --environment-overrides:               Options Summary.     (line  78)
-* --eval:                                Options Summary.     (line  83)
-* --file <1>:                            Options Summary.     (line  90)
+* --environment-overrides:               Options Summary.     (line  83)
+* --eval:                                Options Summary.     (line  88)
+* --file <1>:                            Options Summary.     (line  95)
 * --file <2>:                            Makefile Arguments.  (line   6)
 * --file:                                Makefile Names.      (line  23)
 * --file, and recursion:                 Options/Recursion.   (line  22)
-* --help:                                Options Summary.     (line  96)
-* --ignore-errors <1>:                   Options Summary.     (line 100)
+* --help:                                Options Summary.     (line 101)
+* --ignore-errors <1>:                   Options Summary.     (line 105)
 * --ignore-errors:                       Errors.              (line  30)
-* --include-dir <1>:                     Options Summary.     (line 105)
+* --include-dir <1>:                     Options Summary.     (line 110)
 * --include-dir:                         Include.             (line  53)
-* --jobs <1>:                            Options Summary.     (line 112)
+* --jobs <1>:                            Options Summary.     (line 117)
 * --jobs:                                Parallel.            (line   6)
 * --jobs, and recursion:                 Options/Recursion.   (line  25)
-* --just-print <1>:                      Options Summary.     (line 145)
+* --just-print <1>:                      Options Summary.     (line 150)
 * --just-print <2>:                      Instead of Execution.
                                                               (line  14)
 * --just-print:                          Echoing.             (line  18)
-* --keep-going <1>:                      Options Summary.     (line 121)
+* --keep-going <1>:                      Options Summary.     (line 126)
 * --keep-going <2>:                      Testing.             (line  16)
 * --keep-going:                          Errors.              (line  47)
-* --load-average <1>:                    Options Summary.     (line 128)
-* --load-average:                        Parallel.            (line  58)
-* --makefile <1>:                        Options Summary.     (line  91)
+* --load-average <1>:                    Options Summary.     (line 133)
+* --load-average:                        Parallel.            (line  35)
+* --makefile <1>:                        Options Summary.     (line  96)
 * --makefile <2>:                        Makefile Arguments.  (line   6)
 * --makefile:                            Makefile Names.      (line  23)
-* --max-load <1>:                        Options Summary.     (line 129)
-* --max-load:                            Parallel.            (line  58)
-* --new-file <1>:                        Options Summary.     (line 247)
+* --max-load <1>:                        Options Summary.     (line 134)
+* --max-load:                            Parallel.            (line  35)
+* --new-file <1>:                        Options Summary.     (line 275)
 * --new-file:                            Instead of Execution.
-                                                              (line  35)
+                                                              (line  38)
 * --new-file, and recursion:             Options/Recursion.   (line  22)
-* --no-builtin-rules:                    Options Summary.     (line 182)
-* --no-builtin-variables:                Options Summary.     (line 195)
-* --no-keep-going:                       Options Summary.     (line 210)
-* --no-print-directory <1>:              Options Summary.     (line 239)
+* --no-builtin-rules:                    Options Summary.     (line 203)
+* --no-builtin-variables:                Options Summary.     (line 216)
+* --no-keep-going:                       Options Summary.     (line 231)
+* --no-print-directory <1>:              Options Summary.     (line 267)
 * --no-print-directory:                  -w Option.           (line  20)
-* --old-file <1>:                        Options Summary.     (line 153)
+* --old-file <1>:                        Options Summary.     (line 158)
 * --old-file:                            Avoiding Compilation.
                                                               (line   6)
 * --old-file, and recursion:             Options/Recursion.   (line  22)
-* --print-data-base:                     Options Summary.     (line 162)
-* --print-directory:                     Options Summary.     (line 231)
+* --output-sync <1>:                     Options Summary.     (line 167)
+* --output-sync:                         Parallel Output.     (line  11)
+* --print-data-base:                     Options Summary.     (line 183)
+* --print-directory:                     Options Summary.     (line 259)
 * --print-directory, and --directory:    -w Option.           (line  20)
 * --print-directory, and recursion:      -w Option.           (line  20)
 * --print-directory, disabling:          -w Option.           (line  20)
-* --question <1>:                        Options Summary.     (line 174)
+* --question <1>:                        Options Summary.     (line 195)
 * --question:                            Instead of Execution.
-                                                              (line  27)
-* --quiet <1>:                           Options Summary.     (line 205)
+                                                              (line  30)
+* --quiet <1>:                           Options Summary.     (line 226)
 * --quiet:                               Echoing.             (line  24)
-* --recon <1>:                           Options Summary.     (line 147)
+* --recon <1>:                           Options Summary.     (line 152)
 * --recon <2>:                           Instead of Execution.
                                                               (line  14)
 * --recon:                               Echoing.             (line  18)
-* --silent <1>:                          Options Summary.     (line 204)
+* --silent <1>:                          Options Summary.     (line 225)
 * --silent:                              Echoing.             (line  24)
-* --stop:                                Options Summary.     (line 211)
-* --touch <1>:                           Options Summary.     (line 219)
+* --stop:                                Options Summary.     (line 232)
+* --touch <1>:                           Options Summary.     (line 240)
 * --touch:                               Instead of Execution.
-                                                              (line  21)
+                                                              (line  23)
 * --touch, and recursion:                MAKE Variable.       (line  34)
-* --version:                             Options Summary.     (line 226)
-* --warn-undefined-variables:            Options Summary.     (line 257)
-* --what-if <1>:                         Options Summary.     (line 246)
+* --trace:                               Options Summary.     (line 246)
+* --version:                             Options Summary.     (line 254)
+* --warn-undefined-variables:            Options Summary.     (line 285)
+* --what-if <1>:                         Options Summary.     (line 274)
 * --what-if:                             Instead of Execution.
-                                                              (line  35)
+                                                              (line  38)
 * -B:                                    Options Summary.     (line  14)
 * -b:                                    Options Summary.     (line   9)
 * -C <1>:                                Options Summary.     (line  25)
@@ -4023,60 +5079,62 @@ Index of Concepts
 * -C, and -w:                            -w Option.           (line  20)
 * -C, and recursion:                     Options/Recursion.   (line  22)
 * -d:                                    Options Summary.     (line  33)
-* -e:                                    Options Summary.     (line  77)
+* -e:                                    Options Summary.     (line  82)
 * -e (shell flag):                       Automatic Prerequisites.
                                                               (line  66)
-* -f <1>:                                Options Summary.     (line  89)
+* -f <1>:                                Options Summary.     (line  94)
 * -f <2>:                                Makefile Arguments.  (line   6)
 * -f:                                    Makefile Names.      (line  23)
 * -f, and recursion:                     Options/Recursion.   (line  22)
-* -h:                                    Options Summary.     (line  95)
-* -I:                                    Options Summary.     (line 104)
-* -i <1>:                                Options Summary.     (line  99)
+* -h:                                    Options Summary.     (line 100)
+* -I:                                    Options Summary.     (line 109)
+* -i <1>:                                Options Summary.     (line 104)
 * -i:                                    Errors.              (line  30)
 * -I:                                    Include.             (line  53)
-* -j <1>:                                Options Summary.     (line 111)
+* -j <1>:                                Options Summary.     (line 116)
 * -j:                                    Parallel.            (line   6)
 * -j, and archive update:                Archive Pitfalls.    (line   6)
 * -j, and recursion:                     Options/Recursion.   (line  25)
-* -k <1>:                                Options Summary.     (line 120)
+* -k <1>:                                Options Summary.     (line 125)
 * -k <2>:                                Testing.             (line  16)
 * -k:                                    Errors.              (line  47)
-* -L:                                    Options Summary.     (line 135)
-* -l:                                    Options Summary.     (line 127)
+* -L:                                    Options Summary.     (line 140)
+* -l:                                    Options Summary.     (line 132)
 * -l (library search):                   Libraries/Search.    (line   6)
-* -l (load average):                     Parallel.            (line  58)
+* -l (load average):                     Parallel.            (line  35)
 * -m:                                    Options Summary.     (line  10)
 * -M (to compiler):                      Automatic Prerequisites.
                                                               (line  18)
 * -MM (to GNU compiler):                 Automatic Prerequisites.
                                                               (line  68)
-* -n <1>:                                Options Summary.     (line 144)
+* -n <1>:                                Options Summary.     (line 149)
 * -n <2>:                                Instead of Execution.
                                                               (line  14)
 * -n:                                    Echoing.             (line  18)
-* -o <1>:                                Options Summary.     (line 152)
+* -O:                                    Options Summary.     (line 166)
+* -o <1>:                                Options Summary.     (line 157)
 * -o:                                    Avoiding Compilation.
                                                               (line   6)
+* -O:                                    Parallel Output.     (line  11)
 * -o, and recursion:                     Options/Recursion.   (line  22)
-* -p:                                    Options Summary.     (line 161)
-* -q <1>:                                Options Summary.     (line 173)
+* -p:                                    Options Summary.     (line 182)
+* -q <1>:                                Options Summary.     (line 194)
 * -q:                                    Instead of Execution.
-                                                              (line  27)
-* -R:                                    Options Summary.     (line 194)
-* -r:                                    Options Summary.     (line 181)
-* -S:                                    Options Summary.     (line 209)
-* -s <1>:                                Options Summary.     (line 203)
+                                                              (line  30)
+* -R:                                    Options Summary.     (line 215)
+* -r:                                    Options Summary.     (line 202)
+* -S:                                    Options Summary.     (line 230)
+* -s <1>:                                Options Summary.     (line 224)
 * -s:                                    Echoing.             (line  24)
-* -t <1>:                                Options Summary.     (line 218)
+* -t <1>:                                Options Summary.     (line 239)
 * -t:                                    Instead of Execution.
-                                                              (line  21)
+                                                              (line  23)
 * -t, and recursion:                     MAKE Variable.       (line  34)
-* -v:                                    Options Summary.     (line 225)
-* -W:                                    Options Summary.     (line 245)
-* -w:                                    Options Summary.     (line 230)
+* -v:                                    Options Summary.     (line 253)
+* -W:                                    Options Summary.     (line 273)
+* -w:                                    Options Summary.     (line 258)
 * -W:                                    Instead of Execution.
-                                                              (line  35)
+                                                              (line  38)
 * -w, and -C:                            -w Option.           (line  20)
 * -w, and recursion:                     -w Option.           (line  20)
 * -W, and recursion:                     Options/Recursion.   (line  22)
@@ -4117,6 +5175,8 @@ Index of Concepts
 * .web:                                  Catalogue of Rules.  (line 151)
 * .y:                                    Catalogue of Rules.  (line 120)
 * :: rules (double-colon):               Double-Colon.        (line   6)
+* ::= <1>:                               Setting.             (line   6)
+* ::=:                                   Flavors.             (line  56)
 * := <1>:                                Setting.             (line   6)
 * :=:                                    Flavors.             (line  56)
 * = <1>:                                 Setting.             (line   6)
@@ -4124,13 +5184,14 @@ Index of Concepts
 * =, expansion:                          Reading Makefiles.   (line  33)
 * ? (wildcard character):                Wildcards.           (line   6)
 * ?= <1>:                                Setting.             (line   6)
-* ?=:                                    Flavors.             (line 129)
+* ?=:                                    Flavors.             (line 133)
 * ?=, expansion:                         Reading Makefiles.   (line  33)
 * @ (in recipes):                        Echoing.             (line   6)
 * @, and define:                         Canned Recipes.      (line  49)
 * [...] (wildcard characters):           Wildcards.           (line   6)
-* \ (backslash), for continuation lines: Simple Makefile.     (line  40)
-* \ (backslash), in recipes:             Splitting Lines.     (line   6)
+* \ (backslash), for continuation lines: Simple Makefile.     (line  41)
+* \ (backslash), in recipes:             Splitting Recipe Lines.
+                                                              (line   6)
 * \ (backslash), to quote % <1>:         Text Functions.      (line  26)
 * \ (backslash), to quote % <2>:         Static Usage.        (line  37)
 * \ (backslash), to quote %:             Selective Search.    (line  38)
@@ -4158,17 +5219,19 @@ Index of Concepts
 * automatic variables:                   Automatic Variables. (line   6)
 * automatic variables in prerequisites:  Automatic Variables. (line  17)
 * backquotes:                            Shell Function.      (line   6)
-* backslash (\), for continuation lines: Simple Makefile.     (line  40)
-* backslash (\), in recipes:             Splitting Lines.     (line   6)
+* backslash (\), for continuation lines: Simple Makefile.     (line  41)
+* backslash (\), in recipes:             Splitting Recipe Lines.
+                                                              (line   6)
 * backslash (\), to quote % <1>:         Text Functions.      (line  26)
 * backslash (\), to quote % <2>:         Static Usage.        (line  37)
 * backslash (\), to quote %:             Selective Search.    (line  38)
+* backslash (\), to quote newlines:      Splitting Lines.     (line   6)
 * backslashes in pathnames and wildcard expansion: Wildcard Pitfall.
                                                               (line  31)
 * basename:                              File Name Functions. (line  57)
 * binary packages:                       Install Command Categories.
                                                               (line  80)
-* broken pipe:                           Parallel.            (line  31)
+* broken pipe:                           Parallel Input.      (line  11)
 * bugs, reporting:                       Bugs.                (line   6)
 * built-in special targets:              Special Targets.     (line   6)
 * C++, rule to compile:                  Catalogue of Rules.  (line  39)
@@ -4182,7 +5245,7 @@ Index of Concepts
 * check (standard target):               Goals.               (line 114)
 * clean (standard target):               Goals.               (line  75)
 * clean target <1>:                      Cleanup.             (line  11)
-* clean target:                          Simple Makefile.     (line  84)
+* clean target:                          Simple Makefile.     (line  85)
 * cleaning up:                           Cleanup.             (line   6)
 * clobber (standard target):             Goals.               (line  86)
 * co <1>:                                Implicit Variables.  (line  66)
@@ -4202,18 +5265,19 @@ Index of Concepts
 * computed variable name:                Computed Names.      (line   6)
 * conditional expansion:                 Conditional Functions.
                                                               (line   6)
-* conditional variable assignment:       Flavors.             (line 129)
+* conditional variable assignment:       Flavors.             (line 133)
 * conditionals:                          Conditionals.        (line   6)
-* continuation lines:                    Simple Makefile.     (line  40)
+* continuation lines:                    Simple Makefile.     (line  41)
 * controlling make:                      Make Control Functions.
                                                               (line   6)
 * conventions for makefiles:             Makefile Conventions.
                                                               (line   6)
+* convert guile types:                   Guile Types.         (line   6)
 * ctangle <1>:                           Implicit Variables.  (line 103)
 * ctangle:                               Catalogue of Rules.  (line 151)
 * cweave <1>:                            Implicit Variables.  (line  97)
 * cweave:                                Catalogue of Rules.  (line 151)
-* data base of make rules:               Options Summary.     (line 162)
+* data base of make rules:               Options Summary.     (line 183)
 * deducing recipes (implicit rules):     make Deduces.        (line   6)
 * default directories for included makefiles: Include.        (line  53)
 * default goal <1>:                      Rules.               (line  11)
@@ -4260,6 +5324,9 @@ Index of Concepts
 * errors (in recipes):                   Errors.              (line   6)
 * errors with wildcards:                 Wildcard Pitfall.    (line   6)
 * evaluating makefile syntax:            Eval Function.       (line   6)
+* example of loaded objects:             Loaded Object Example.
+                                                              (line   6)
+* example using Guile:                   Guile Example.       (line   6)
 * execution, in parallel:                Parallel.            (line   6)
 * execution, instead of:                 Instead of Execution.
                                                               (line   6)
@@ -4268,10 +5335,13 @@ Index of Concepts
 * exit status of make:                   Running.             (line  18)
 * expansion, secondary:                  Secondary Expansion. (line   6)
 * explicit rule, definition of:          Makefile Contents.   (line  10)
-* explicit rule, expansion:              Reading Makefiles.   (line  77)
+* explicit rule, expansion:              Reading Makefiles.   (line  92)
 * explicit rules, secondary expansion of: Secondary Expansion.
                                                               (line 106)
 * exporting variables:                   Variables/Recursion. (line   6)
+* extensions, Guile:                     Guile Integration.   (line   6)
+* extensions, load directive:            load Directive.      (line   6)
+* extensions, loading:                   Loading Objects.     (line   6)
 * f77 <1>:                               Implicit Variables.  (line  57)
 * f77:                                   Catalogue of Rules.  (line  49)
 * FDL, GNU Free Documentation License:   GNU Free Documentation License.
@@ -4290,8 +5360,9 @@ Index of Concepts
 * file name, directory part:             File Name Functions. (line  17)
 * file name, nondirectory part:          File Name Functions. (line  27)
 * file name, realpath of:                File Name Functions. (line 114)
+* file, writing to:                      File Function.       (line   6)
 * files, assuming new:                   Instead of Execution.
-                                                              (line  35)
+                                                              (line  38)
 * files, assuming old:                   Avoiding Compilation.
                                                               (line   6)
 * files, avoiding recompilation of:      Avoiding Compilation.
@@ -4327,17 +5398,21 @@ Index of Concepts
 * goal, default <1>:                     Rules.               (line  11)
 * goal, default:                         How Make Works.      (line  11)
 * goal, how to specify:                  Goals.               (line   6)
+* Guile <1>:                             Guile Integration.   (line   6)
+* Guile:                                 Guile Function.      (line   6)
+* Guile example:                         Guile Example.       (line   6)
+* guile, conversion of types:            Guile Types.         (line   6)
 * home directory:                        Wildcards.           (line  11)
 * IEEE Standard 1003.2:                  Overview.            (line  13)
-* ifdef, expansion:                      Reading Makefiles.   (line  67)
-* ifeq, expansion:                       Reading Makefiles.   (line  67)
-* ifndef, expansion:                     Reading Makefiles.   (line  67)
-* ifneq, expansion:                      Reading Makefiles.   (line  67)
+* ifdef, expansion:                      Reading Makefiles.   (line  82)
+* ifeq, expansion:                       Reading Makefiles.   (line  82)
+* ifndef, expansion:                     Reading Makefiles.   (line  82)
+* ifneq, expansion:                      Reading Makefiles.   (line  82)
 * implicit rule:                         Implicit Rules.      (line   6)
 * implicit rule, and directory search:   Implicit/Search.     (line   6)
 * implicit rule, and VPATH:              Implicit/Search.     (line   6)
 * implicit rule, definition of:          Makefile Contents.   (line  16)
-* implicit rule, expansion:              Reading Makefiles.   (line  77)
+* implicit rule, expansion:              Reading Makefiles.   (line  92)
 * implicit rule, how to use:             Using Implicit.      (line   6)
 * implicit rule, introduction to:        make Deduces.        (line   6)
 * implicit rule, predefined:             Catalogue of Rules.  (line   6)
@@ -4353,16 +5428,18 @@ Index of Concepts
 * Info, rule to format:                  Catalogue of Rules.  (line 158)
 * inheritance, suppressing:              Suppressing Inheritance.
                                                               (line   6)
+* input during parallel execution:       Parallel Input.      (line   6)
 * install (standard target):             Goals.               (line  92)
 * installation directories, creating:    Directory Variables. (line  20)
 * installations, staged:                 DESTDIR.             (line   6)
+* interface for loaded objects:          Loaded Object API.   (line   6)
 * intermediate files:                    Chained Rules.       (line  16)
 * intermediate files, preserving:        Chained Rules.       (line  46)
 * intermediate targets, explicit:        Special Targets.     (line  44)
 * interrupt:                             Interrupts.          (line   6)
 * job slots:                             Parallel.            (line   6)
 * job slots, and recursion:              Options/Recursion.   (line  25)
-* jobs, limiting based on load:          Parallel.            (line  58)
+* jobs, limiting based on load:          Parallel.            (line  35)
 * joining lists of words:                File Name Functions. (line  90)
 * killing (interruption):                Interrupts.          (line   6)
 * last-resort default rules:             Last Resort.         (line   6)
@@ -4373,7 +5450,7 @@ Index of Concepts
 * libraries for linking, directory search: Libraries/Search.  (line   6)
 * library archive, suffix rule for:      Archive Suffix Rules.
                                                               (line   6)
-* limiting jobs based on load:           Parallel.            (line  58)
+* limiting jobs based on load:           Parallel.            (line  35)
 * link libraries, and directory search:  Libraries/Search.    (line   6)
 * link libraries, patterns matching:     Libraries/Search.    (line   6)
 * linking, predefined rule for:          Catalogue of Rules.  (line  86)
@@ -4382,7 +5459,16 @@ Index of Concepts
 * lint, rule to run:                     Catalogue of Rules.  (line 146)
 * list of all prerequisites:             Automatic Variables. (line  61)
 * list of changed prerequisites:         Automatic Variables. (line  51)
-* load average:                          Parallel.            (line  58)
+* load average:                          Parallel.            (line  35)
+* load directive:                        load Directive.      (line   6)
+* loaded object API:                     Loaded Object API.   (line   6)
+* loaded object example:                 Loaded Object Example.
+                                                              (line   6)
+* loaded object licensing:               Loaded Object API.   (line  32)
+* loaded objects:                        Loading Objects.     (line   6)
+* loaded objects, remaking of:           Remaking Loaded Objects.
+                                                              (line   6)
+* long lines, splitting:                 Splitting Lines.     (line   6)
 * loops in variable expansion:           Flavors.             (line  44)
 * lpr (shell command) <1>:               Empty Targets.       (line  25)
 * lpr (shell command):                   Wildcard Examples.   (line  21)
@@ -4391,6 +5477,9 @@ Index of Concepts
 * macro:                                 Using Variables.     (line  10)
 * make depend:                           Automatic Prerequisites.
                                                               (line  37)
+* make extensions:                       Extending make.      (line   6)
+* make interface to guile:               Guile Interface.     (line   6)
+* make procedures in guile:              Guile Interface.     (line   6)
 * makefile:                              Introduction.        (line   7)
 * makefile name:                         Makefile Names.      (line   6)
 * makefile name, how to specify:         Makefile Names.      (line  30)
@@ -4428,14 +5517,16 @@ Index of Concepts
 * name of makefile:                      Makefile Names.      (line   6)
 * name of makefile, how to specify:      Makefile Names.      (line  30)
 * nested variable reference:             Computed Names.      (line   6)
-* newline, quoting, in makefile:         Simple Makefile.     (line  40)
-* newline, quoting, in recipes:          Splitting Lines.     (line   6)
+* newline, quoting, in makefile:         Simple Makefile.     (line  41)
+* newline, quoting, in recipes:          Splitting Recipe Lines.
+                                                              (line   6)
 * nondirectory part:                     File Name Functions. (line  27)
 * normal prerequisites:                  Prerequisite Types.  (line   6)
 * OBJ:                                   Variables Simplify.  (line  20)
 * obj:                                   Variables Simplify.  (line  20)
 * OBJECTS:                               Variables Simplify.  (line  20)
 * objects:                               Variables Simplify.  (line  14)
+* objects, loaded:                       Loading Objects.     (line   6)
 * OBJS:                                  Variables Simplify.  (line  20)
 * objs:                                  Variables Simplify.  (line  20)
 * old-fashioned suffix rules:            Suffix Rules.        (line   6)
@@ -4446,17 +5537,22 @@ Index of Concepts
 * order of pattern rules:                Pattern Match.       (line  30)
 * order-only prerequisites:              Prerequisite Types.  (line   6)
 * origin of variable:                    Origin Function.     (line   6)
+* output during parallel execution <1>:  Options Summary.     (line 167)
+* output during parallel execution:      Parallel Output.     (line   6)
 * overriding makefiles:                  Overriding Makefiles.
                                                               (line   6)
 * overriding variables with arguments:   Overriding.          (line   6)
 * overriding with override:              Override Directive.  (line   6)
 * parallel execution:                    Parallel.            (line   6)
 * parallel execution, and archive update: Archive Pitfalls.   (line   6)
+* parallel execution, input during:      Parallel Input.      (line   6)
+* parallel execution, output during <1>: Options Summary.     (line 167)
+* parallel execution, output during:     Parallel Output.     (line   6)
 * parallel execution, overriding:        Special Targets.     (line 130)
 * parts of makefile rule:                Rule Introduction.   (line   6)
 * Pascal, rule to compile:               Catalogue of Rules.  (line  45)
 * pattern rule:                          Pattern Intro.       (line   6)
-* pattern rule, expansion:               Reading Makefiles.   (line  77)
+* pattern rule, expansion:               Reading Makefiles.   (line  92)
 * pattern rules, order of:               Pattern Match.       (line  30)
 * pattern rules, static (not implicit):  Static Pattern.      (line   6)
 * pattern rules, static, syntax of:      Static Usage.        (line   6)
@@ -4465,24 +5561,25 @@ Index of Concepts
 * pc:                                    Catalogue of Rules.  (line  45)
 * phony targets:                         Phony Targets.       (line   6)
 * phony targets and recipe execution:    Instead of Execution.
-                                                              (line  68)
+                                                              (line  71)
 * pitfalls of wildcards:                 Wildcard Pitfall.    (line   6)
+* plugin_is_GPL_compatible:              Loaded Object API.   (line  32)
 * portability:                           Features.            (line   6)
+* POSIX <1>:                             Options/Recursion.   (line  60)
 * POSIX:                                 Overview.            (line  13)
 * POSIX-conforming mode, setting:        Special Targets.     (line 143)
-* POSIX.2:                               Options/Recursion.   (line  60)
 * post-installation commands:            Install Command Categories.
                                                               (line   6)
 * pre-installation commands:             Install Command Categories.
                                                               (line   6)
 * precious targets:                      Special Targets.     (line  29)
-* predefined rules and variables, printing: Options Summary.  (line 162)
+* predefined rules and variables, printing: Options Summary.  (line 183)
 * prefix, adding:                        File Name Functions. (line  79)
 * prerequisite:                          Rules.               (line   6)
 * prerequisite pattern, implicit:        Pattern Intro.       (line  22)
 * prerequisite pattern, static (not implicit): Static Usage.  (line  30)
 * prerequisite types:                    Prerequisite Types.  (line   6)
-* prerequisite, expansion:               Reading Makefiles.   (line  77)
+* prerequisite, expansion:               Reading Makefiles.   (line  92)
 * prerequisites:                         Rule Syntax.         (line  48)
 * prerequisites, and automatic variables: Automatic Variables.
                                                               (line  17)
@@ -4512,19 +5609,20 @@ Index of Concepts
 * problems with wildcards:               Wildcard Pitfall.    (line   6)
 * processing a makefile:                 How Make Works.      (line   6)
 * question mode:                         Instead of Execution.
-                                                              (line  27)
+                                                              (line  30)
 * quoting %, in patsubst:                Text Functions.      (line  26)
 * quoting %, in static pattern:          Static Usage.        (line  37)
 * quoting %, in vpath:                   Selective Search.    (line  38)
-* quoting newline, in makefile:          Simple Makefile.     (line  40)
-* quoting newline, in recipes:           Splitting Lines.     (line   6)
+* quoting newline, in makefile:          Simple Makefile.     (line  41)
+* quoting newline, in recipes:           Splitting Recipe Lines.
+                                                              (line   6)
 * Ratfor, rule to compile:               Catalogue of Rules.  (line  49)
 * RCS, rule to extract from:             Catalogue of Rules.  (line 164)
 * reading makefiles:                     Reading Makefiles.   (line   6)
 * README:                                Makefile Names.      (line   9)
 * realclean (standard target):           Goals.               (line  85)
 * realpath:                              File Name Functions. (line 114)
-* recipe:                                Simple Makefile.     (line  73)
+* recipe:                                Simple Makefile.     (line  74)
 * recipe execution, single invocation:   Special Targets.     (line 137)
 * recipe lines, single shell:            One Shell.           (line   6)
 * recipe syntax:                         Recipe Syntax.       (line   6)
@@ -4533,7 +5631,8 @@ Index of Concepts
 * recipes:                               Rule Syntax.         (line  26)
 * recipes setting shell variables:       Execution.           (line  12)
 * recipes, and directory search:         Recipes/Search.      (line   6)
-* recipes, backslash (\) in:             Splitting Lines.     (line   6)
+* recipes, backslash (\) in:             Splitting Recipe Lines.
+                                                              (line   6)
 * recipes, canned:                       Canned Recipes.      (line   6)
 * recipes, comments in:                  Recipe Syntax.       (line  29)
 * recipes, echoing:                      Echoing.             (line   6)
@@ -4544,8 +5643,10 @@ Index of Concepts
 * recipes, instead of executing:         Instead of Execution.
                                                               (line   6)
 * recipes, introduction to:              Rule Introduction.   (line   8)
-* recipes, quoting newlines in:          Splitting Lines.     (line   6)
-* recipes, splitting:                    Splitting Lines.     (line   6)
+* recipes, quoting newlines in:          Splitting Recipe Lines.
+                                                              (line   6)
+* recipes, splitting:                    Splitting Recipe Lines.
+                                                              (line   6)
 * recipes, using variables in:           Variables in Recipes.
                                                               (line   6)
 * recompilation:                         Introduction.        (line  22)
@@ -4575,6 +5676,8 @@ Index of Concepts
 * reference to variables <1>:            Advanced.            (line   6)
 * reference to variables:                Reference.           (line   6)
 * relinking:                             How Make Works.      (line  46)
+* remaking loaded objects:               Remaking Loaded Objects.
+                                                              (line   6)
 * remaking makefiles:                    Remaking Makefiles.  (line   6)
 * removal of target files <1>:           Interrupts.          (line   6)
 * removal of target files:               Errors.              (line  64)
@@ -4586,7 +5689,7 @@ Index of Concepts
 * rm (shell command) <1>:                Errors.              (line  27)
 * rm (shell command) <2>:                Phony Targets.       (line  20)
 * rm (shell command) <3>:                Wildcard Examples.   (line  12)
-* rm (shell command):                    Simple Makefile.     (line  84)
+* rm (shell command):                    Simple Makefile.     (line  85)
 * rule prerequisites:                    Rule Syntax.         (line  48)
 * rule syntax:                           Rule Syntax.         (line   6)
 * rule targets:                          Rule Syntax.         (line  18)
@@ -4657,14 +5760,16 @@ Index of Concepts
 * simplifying with variables:            Variables Simplify.  (line   6)
 * simply expanded variables:             Flavors.             (line  56)
 * sorting words:                         Text Functions.      (line 146)
-* spaces, in variable values:            Flavors.             (line 103)
+* spaces, in variable values:            Flavors.             (line 107)
 * spaces, stripping:                     Text Functions.      (line  80)
 * special targets:                       Special Targets.     (line   6)
 * special variables:                     Special Variables.   (line   6)
 * specifying makefile name:              Makefile Names.      (line  30)
-* splitting recipes:                     Splitting Lines.     (line   6)
+* splitting long lines:                  Splitting Lines.     (line   6)
+* splitting recipes:                     Splitting Recipe Lines.
+                                                              (line   6)
 * staged installs:                       DESTDIR.             (line   6)
-* standard input:                        Parallel.            (line  31)
+* standard input:                        Parallel Input.      (line   6)
 * standards conformance:                 Overview.            (line  13)
 * standards for makefiles:               Makefile Conventions.
                                                               (line   6)
@@ -4708,11 +5813,11 @@ Index of Concepts
 * target pattern, static (not implicit): Static Usage.        (line  17)
 * target, deleting on error:             Errors.              (line  64)
 * target, deleting on interrupt:         Interrupts.          (line   6)
-* target, expansion:                     Reading Makefiles.   (line  77)
+* target, expansion:                     Reading Makefiles.   (line  92)
 * target, multiple in pattern rule:      Pattern Intro.       (line  53)
 * target, multiple rules for one:        Multiple Rules.      (line   6)
 * target, touching:                      Instead of Execution.
-                                                              (line  21)
+                                                              (line  23)
 * target-specific variables:             Target-specific.     (line   6)
 * targets:                               Rule Syntax.         (line  18)
 * targets without a file:                Phony Targets.       (line   6)
@@ -4736,12 +5841,15 @@ Index of Concepts
 * touch (shell command) <1>:             Empty Targets.       (line  25)
 * touch (shell command):                 Wildcard Examples.   (line  21)
 * touching files:                        Instead of Execution.
-                                                              (line  21)
+                                                              (line  23)
 * traditional directory search (GPATH):  Search Algorithm.    (line  42)
 * types of prerequisites:                Prerequisite Types.  (line   6)
-* undefined variables, warning message:  Options Summary.     (line 257)
+* types, conversion of:                  Guile Types.         (line   6)
+* undefined variables, warning message:  Options Summary.     (line 285)
 * undefining variable:                   Undefine Directive.  (line   6)
 * updating archive symbol directories:   Archive Symbols.     (line   6)
+* updating loaded objects:               Remaking Loaded Objects.
+                                                              (line   6)
 * updating makefiles:                    Remaking Makefiles.  (line   6)
 * user defined functions:                Call Function.       (line   6)
 * value:                                 Using Variables.     (line   6)
@@ -4758,7 +5866,7 @@ Index of Concepts
 * variables, command line:               Overriding.          (line   6)
 * variables, command line, and recursion: Options/Recursion.  (line  17)
 * variables, computed names:             Computed Names.      (line   6)
-* variables, conditional assignment:     Flavors.             (line 129)
+* variables, conditional assignment:     Flavors.             (line 133)
 * variables, defining verbatim:          Multi-Line.          (line   6)
 * variables, environment <1>:            Environment.         (line   6)
 * variables, environment:                Variables/Recursion. (line   6)
@@ -4778,12 +5886,12 @@ Index of Concepts
 * variables, recursively expanded:       Flavors.             (line   6)
 * variables, setting:                    Setting.             (line   6)
 * variables, simply expanded:            Flavors.             (line  56)
-* variables, spaces in values:           Flavors.             (line 103)
+* variables, spaces in values:           Flavors.             (line 107)
 * variables, substituting suffix in:     Substitution Refs.   (line   6)
 * variables, substitution reference:     Substitution Refs.   (line   6)
 * variables, target-specific:            Target-specific.     (line   6)
 * variables, unexpanded value:           Value Function.      (line   6)
-* variables, warning for undefined:      Options Summary.     (line 257)
+* variables, warning for undefined:      Options Summary.     (line 285)
 * varying prerequisites:                 Static Pattern.      (line   6)
 * verbatim variable definition:          Multi-Line.          (line   6)
 * vpath:                                 Directory Search.    (line   6)
@@ -4795,8 +5903,8 @@ Index of Concepts
 * weave:                                 Catalogue of Rules.  (line 151)
 * Web, rule to run:                      Catalogue of Rules.  (line 151)
 * what if:                               Instead of Execution.
-                                                              (line  35)
-* whitespace, in variable values:        Flavors.             (line 103)
+                                                              (line  38)
+* whitespace, in variable values:        Flavors.             (line 107)
 * whitespace, stripping:                 Text Functions.      (line  80)
 * wildcard:                              Wildcards.           (line   6)
 * wildcard pitfalls:                     Wildcard Pitfall.    (line   6)
@@ -4818,6 +5926,7 @@ Index of Concepts
 * words, selecting lists of:             Text Functions.      (line 168)
 * writing recipes:                       Recipes.             (line   6)
 * writing rules:                         Rules.               (line   6)
+* writing to a file:                     File Function.       (line   6)
 * yacc <1>:                              Implicit Variables.  (line  77)
 * yacc <2>:                              Catalogue of Rules.  (line 120)
 * yacc:                                  Canned Recipes.      (line  18)
@@ -4866,6 +5975,7 @@ Index of Functions, Variables, & Directives
 * + (automatic variable):                Automatic Variables. (line  63)
 * +D (automatic variable):               Automatic Variables. (line 147)
 * +F (automatic variable):               Automatic Variables. (line 148)
+* -load:                                 load Directive.      (line  65)
 * .DEFAULT <1>:                          Last Resort.         (line  23)
 * .DEFAULT:                              Special Targets.     (line  20)
 * .DEFAULT, and empty recipes:           Empty Recipes.       (line  16)
@@ -4874,13 +5984,14 @@ Index of Functions, Variables, & Directives
 * .DELETE_ON_ERROR:                      Special Targets.     (line  63)
 * .EXPORT_ALL_VARIABLES <1>:             Variables/Recursion. (line  99)
 * .EXPORT_ALL_VARIABLES:                 Special Targets.     (line 124)
-* .FEATURES (list of supported features): Special Variables.  (line 102)
+* .FEATURES (list of supported features): Special Variables.  (line 122)
 * .IGNORE <1>:                           Errors.              (line  30)
 * .IGNORE:                               Special Targets.     (line  69)
 * .INCLUDE_DIRS (list of include directories): Special Variables.
-                                                              (line 135)
+                                                              (line 175)
 * .INTERMEDIATE:                         Special Targets.     (line  43)
 * .LIBPATTERNS:                          Libraries/Search.    (line   6)
+* .LOADED:                               load Directive.      (line  62)
 * .LOW_RESOLUTION_TIME:                  Special Targets.     (line  81)
 * .NOTPARALLEL:                          Special Targets.     (line 129)
 * .ONESHELL <1>:                         One Shell.           (line   6)
@@ -4892,7 +6003,7 @@ Index of Functions, Variables, & Directives
 * .PRECIOUS <1>:                         Interrupts.          (line  22)
 * .PRECIOUS:                             Special Targets.     (line  28)
 * .RECIPEPREFIX (change the recipe prefix character): Special Variables.
-                                                              (line  80)
+                                                              (line 100)
 * .SECONDARY:                            Special Targets.     (line  48)
 * .SECONDEXPANSION <1>:                  Special Targets.     (line  57)
 * .SECONDEXPANSION:                      Secondary Expansion. (line   6)
@@ -4901,7 +6012,7 @@ Index of Functions, Variables, & Directives
 * .SILENT:                               Special Targets.     (line 111)
 * .SUFFIXES <1>:                         Suffix Rules.        (line  61)
 * .SUFFIXES:                             Special Targets.     (line  15)
-* .VARIABLES (list of variables):        Special Variables.   (line  93)
+* .VARIABLES (list of variables):        Special Variables.   (line 113)
 * /usr/gnu/include:                      Include.             (line  53)
 * /usr/include:                          Include.             (line  53)
 * /usr/local/include:                    Include.             (line  53)
@@ -4954,6 +6065,7 @@ Index of Functions, Variables, & Directives
 * export:                                Variables/Recursion. (line  40)
 * FC:                                    Implicit Variables.  (line  56)
 * FFLAGS:                                Implicit Variables.  (line 133)
+* file:                                  File Function.       (line   6)
 * filter:                                Text Functions.      (line 114)
 * filter-out:                            Text Functions.      (line 132)
 * findstring:                            Text Functions.      (line 103)
@@ -4962,8 +6074,17 @@ Index of Functions, Variables, & Directives
 * foreach:                               Foreach Function.    (line   6)
 * GET:                                   Implicit Variables.  (line  69)
 * GFLAGS:                                Implicit Variables.  (line 136)
+* gmk-eval:                              Guile Interface.     (line  18)
+* gmk-expand:                            Guile Interface.     (line  12)
+* gmk_add_function:                      Loaded Object API.   (line  54)
+* gmk_alloc:                             Loaded Object API.   (line 150)
+* gmk_eval:                              Loaded Object API.   (line 124)
+* gmk_expand:                            Loaded Object API.   (line 118)
+* gmk_free:                              Loaded Object API.   (line 155)
+* gmk_func_ptr:                          Loaded Object API.   (line  96)
 * GNUmakefile:                           Makefile Names.      (line   7)
 * GPATH:                                 Search Algorithm.    (line  48)
+* guile:                                 Guile Function.      (line   6)
 * if:                                    Conditional Functions.
                                                               (line   6)
 * ifdef:                                 Conditional Syntax.  (line   6)
@@ -4976,17 +6097,25 @@ Index of Functions, Variables, & Directives
 * join:                                  File Name Functions. (line  90)
 * lastword:                              Text Functions.      (line 197)
 * LDFLAGS:                               Implicit Variables.  (line 139)
+* LDLIBS:                                Implicit Variables.  (line 144)
 * LEX:                                   Implicit Variables.  (line  72)
-* LFLAGS:                                Implicit Variables.  (line 143)
+* LFLAGS:                                Implicit Variables.  (line 150)
 * libexecdir:                            Directory Variables. (line  70)
 * LINT:                                  Implicit Variables.  (line  80)
-* LINTFLAGS:                             Implicit Variables.  (line 155)
+* LINTFLAGS:                             Implicit Variables.  (line 162)
+* load:                                  load Directive.      (line   9)
+* LOADLIBES:                             Implicit Variables.  (line 144)
 * M2C:                                   Implicit Variables.  (line  60)
-* MAKE <1>:                              Flavors.             (line  84)
+* MAKE <1>:                              Flavors.             (line  88)
 * MAKE:                                  MAKE Variable.       (line   6)
+* MAKE_HOST:                             Quick Reference.     (line 341)
 * MAKE_RESTARTS (number of times make has restarted): Special Variables.
                                                               (line  73)
-* MAKE_VERSION:                          Features.            (line 197)
+* MAKE_TERMERR (whether stderr is a terminal): Special Variables.
+                                                              (line  80)
+* MAKE_TERMOUT (whether stdout is a terminal): Special Variables.
+                                                              (line  80)
+* MAKE_VERSION:                          Quick Reference.     (line 337)
 * MAKECMDGOALS:                          Goals.               (line  30)
 * makefile:                              Makefile Names.      (line   7)
 * Makefile:                              Makefile Names.      (line   7)
@@ -4996,7 +6125,7 @@ Index of Functions, Variables, & Directives
 * MAKEFILES:                             MAKEFILES Variable.  (line   6)
 * MAKEFLAGS:                             Options/Recursion.   (line   6)
 * MAKEINFO:                              Implicit Variables.  (line  83)
-* MAKELEVEL <1>:                         Flavors.             (line  84)
+* MAKELEVEL <1>:                         Flavors.             (line  88)
 * MAKELEVEL:                             Variables/Recursion. (line 115)
 * MAKEOVERRIDES:                         Options/Recursion.   (line  49)
 * MAKESHELL (MS-DOS alternative to SHELL): Choosing the Shell.
@@ -5011,12 +6140,12 @@ Index of Functions, Variables, & Directives
 * patsubst <1>:                          Text Functions.      (line  18)
 * patsubst:                              Substitution Refs.   (line  28)
 * PC:                                    Implicit Variables.  (line  63)
-* PFLAGS:                                Implicit Variables.  (line 149)
+* PFLAGS:                                Implicit Variables.  (line 156)
 * prefix:                                Directory Variables. (line  29)
 * private:                               Suppressing Inheritance.
                                                               (line   6)
 * realpath:                              File Name Functions. (line 114)
-* RFLAGS:                                Implicit Variables.  (line 152)
+* RFLAGS:                                Implicit Variables.  (line 159)
 * RM:                                    Implicit Variables.  (line 106)
 * sbindir:                               Directory Variables. (line  63)
 * shell:                                 Shell Function.      (line   6)
@@ -5047,7 +6176,7 @@ Index of Functions, Variables, & Directives
 * wordlist:                              Text Functions.      (line 168)
 * words:                                 Text Functions.      (line 180)
 * YACC:                                  Implicit Variables.  (line  76)
-* YFLAGS:                                Implicit Variables.  (line 146)
+* YFLAGS:                                Implicit Variables.  (line 153)
 * | (automatic variable):                Automatic Variables. (line  69)
 
 

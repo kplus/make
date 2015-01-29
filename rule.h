@@ -1,7 +1,5 @@
 /* Definitions for using pattern rules in GNU Make.
-Copyright (C) 1988, 1989, 1990, 1991, 1992, 1993, 1994, 1995, 1996, 1997,
-1998, 1999, 2000, 2001, 2002, 2003, 2004, 2005, 2006, 2007, 2008, 2009,
-2010 Free Software Foundation, Inc.
+Copyright (C) 1988-2014 Free Software Foundation, Inc.
 This file is part of GNU Make.
 
 GNU Make is free software; you can redistribute it and/or modify it under the
@@ -22,20 +20,20 @@ this program.  If not, see <http://www.gnu.org/licenses/>.  */
 struct rule
   {
     struct rule *next;
-    const char **targets;	/* Targets of the rule.  */
-    unsigned int *lens;		/* Lengths of each target.  */
-    const char **suffixes;	/* Suffixes (after `%') of each target.  */
-    struct dep *deps;		/* Dependencies of the rule.  */
-    struct commands *cmds;	/* Commands to execute.  */
+    const char **targets;       /* Targets of the rule.  */
+    unsigned int *lens;         /* Lengths of each target.  */
+    const char **suffixes;      /* Suffixes (after '%') of each target.  */
+    struct dep *deps;           /* Dependencies of the rule.  */
+    struct commands *cmds;      /* Commands to execute.  */
     unsigned short num;         /* Number of targets.  */
-    char terminal;		/* If terminal (double-colon).  */
-    char in_use;		/* If in use by a parent pattern_search.  */
+    char terminal;              /* If terminal (double-colon).  */
+    char in_use;                /* If in use by a parent pattern_search.  */
   };
 
 /* For calling install_pattern_rule.  */
 struct pspec
   {
-    char *target, *dep, *commands;
+    const char *target, *dep, *commands;
   };
 
 
